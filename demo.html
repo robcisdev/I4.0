@@ -1,0 +1,3047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>blauLabs Manufacturing Intelligence - Carrier Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        carrier: {
+                            blue: '#0066cc',
+                            dark: '#1a1a2e',
+                            darker: '#16213e',
+                            panel: '#1f2937',
+                            border: '#374151'
+                        }
+                    }
+                }
+            }
+        };
+
+        // Enable dark mode
+        document.documentElement.classList.add('dark');
+        
+        // Handle theme changes
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    </script>
+    <style>
+        body {
+            overflow-x: hidden;
+        }
+        .manufacturing-card {
+            position: relative;
+            overflow: hidden;
+        }
+        .manufacturing-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to top, rgba(26, 26, 46, 0.9), rgba(26, 26, 46, 0));
+            z-index: 1;
+            pointer-events: none;
+        }
+        .manufacturing-status {
+            position: relative;
+            z-index: 2;
+        }
+        .nav-item {
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .view-transition {
+            display: none;
+        }
+        .view-transition.active {
+            display: block;
+        }
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        /* Tree Navigation Styles */
+        .tree-nav {
+            width: 280px;
+            background-color: #1a1a2e;
+            border-right: 1px solid #374151;
+            transition: width 0.3s ease;
+            overflow-y: auto;
+        }
+        .tree-nav.collapsed {
+            width: 60px;
+        }
+        .tree-item {
+            cursor: pointer;
+            user-select: none;
+        }
+        .tree-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        .tree-item.active {
+            background-color: rgba(0, 102, 204, 0.1);
+            border-left: 3px solid #0066cc;
+        }
+        .tree-children {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .tree-children.expanded {
+            max-height: 2000px;
+        }
+        .production-line-icon {
+            color: #f59e0b;
+        }
+        .region-icon {
+            color: #ef4444;
+        }
+        .plant-icon {
+            color: #818cf8;
+        }
+        .expand-icon {
+            transition: transform 0.2s ease;
+        }
+        .rotate-90 {
+            transform: rotate(90deg);
+        }
+        /* Status indicators */
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: auto;
+        }
+        .status-operational {
+            background-color: #10b981;
+        }
+        .status-warning {
+            background-color: #f59e0b;
+        }
+        .status-critical {
+            background-color: #ef4444;
+        }
+        .status-maintenance {
+            background-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-carrier-dark text-white font-sans">
+    <div class="flex min-h-screen">
+        <!-- Left Sidebar -->
+        <div class="w-14 bg-carrier-darker flex flex-col items-center py-4 border-r border-carrier-border">
+            <div class="mb-6">
+                <img src="https://pfst.cf2.poecdn.net/base/image/9efe704e01d5a6f7a7b329f4d99687dc3103ba2dea921e54ad9be4a0267d6913?w=318&h=130" alt="blauLabs" class="w-8 h-8 object-contain">
+            </div>
+            <div class="flex flex-col space-y-6 mt-4">
+                <a href="#" class="text-white hover:text-carrier-blue">
+                    <i class="fas fa-th-large text-lg"></i>
+                </a>
+                <a href="#" class="text-gray-500 hover:text-carrier-blue">
+                    <i class="fas fa-chart-line text-lg"></i>
+                </a>
+                <a href="#" class="text-white hover:text-carrier-blue" id="toggle-tree-nav">
+                    <i class="fas fa-sitemap text-lg"></i>
+                </a>
+                <a href="#" class="text-gray-500 hover:text-carrier-blue">
+                    <i class="fas fa-industry text-lg"></i>
+                </a>
+                <a href="#" class="text-gray-500 hover:text-carrier-blue">
+                    <i class="fas fa-file-alt text-lg"></i>
+                </a>
+                <a href="#" class="text-gray-500 hover:text-carrier-blue relative" id="alerts-panel-toggle">
+                    <i class="fas fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 flex items-center justify-center text-xs" id="alert-count">8</span>
+                </a>
+                <a href="#" class="text-gray-500 hover:text-carrier-blue" id="maintenance-dashboard-toggle">
+                    <i class="fas fa-tools text-lg"></i>
+                </a>
+                <a href="#" class="text-gray-500 hover:text-carrier-blue">
+                    <i class="fas fa-cog text-lg"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Tree Navigation Panel -->
+        <div class="tree-nav" id="tree-navigation">
+            <div class="p-3 border-b border-carrier-border">
+                <h3 class="text-lg font-semibold">Manufacturing Assets</h3>
+                <div class="relative mt-3">
+                    <input type="text" id="tree-filter" placeholder="filter" class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-carrier-blue focus:border-transparent">
+                    <i class="fas fa-search absolute right-3 top-2.5 text-gray-500"></i>
+                </div>
+            </div>
+            <div id="tree-container" class="pt-2">
+                <!-- Tree will be generated here -->
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+            <!-- Top Navigation Bar -->
+            <div class="h-14 bg-carrier-darker flex items-center justify-between px-4 border-b border-carrier-border">
+                <div class="flex items-center">
+                    <img src="https://pfst.cf2.poecdn.net/base/image/9efe704e01d5a6f7a7b329f4d99687dc3103ba2dea921e54ad9be4a0267d6913?w=318&h=130" alt="blauLabs Manufacturing Intelligence" class="h-8">
+                    <div class="ml-4 text-sm">
+                        <span class="text-gray-400">Powered by</span>
+                        <span class="text-carrier-blue font-semibold ml-1">CARRIER INTELLIGENCE</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="relative hidden md:block">
+                        <input type="text" placeholder="Global Search" class="bg-carrier-panel border border-carrier-border rounded-md px-10 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-carrier-blue">
+                        <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
+                        <span class="absolute right-3 top-2 text-xs text-gray-400">Ctrl+Shift+F</span>
+                    </div>
+                    <button class="p-2 rounded-full hover:bg-carrier-panel">
+                        <i class="fas fa-sun"></i>
+                    </button>
+                    <div class="flex items-center bg-carrier-panel rounded-md px-2 py-1 border border-carrier-border">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">CA</div>
+                        <span class="ml-2 hidden md:inline">CARRIER_Admin</span>
+                        <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div class="flex-1 p-4 overflow-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h1 class="text-3xl font-bold">MANUFACTURING OPERATIONS</h1>
+                        <p class="text-gray-400 mt-1">Global Production Monitoring & Asset Intelligence</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="bg-carrier-blue text-white px-4 py-2 rounded-md flex items-center">
+                            WIDGETS <i class="fas fa-chevron-down ml-2"></i>
+                        </button>
+                        <button class="text-gray-400 px-2 py-2 hover:text-white">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <button class="text-gray-400 px-2 py-2 hover:text-white">
+                            <i class="fas fa-question-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Navigation Breadcrumbs -->
+                <div class="bg-carrier-panel border border-carrier-border rounded-md p-2 mb-4">
+                    <div class="flex items-center text-sm" id="breadcrumb">
+                        <a href="#" class="text-carrier-blue hover:underline" data-level="0">Home</a>
+                    </div>
+                </div>
+
+                <!-- Content Views -->
+                <div id="content-views">
+                    <!-- Home View -->
+                    <div id="home-view" class="view-transition active">
+                        <h2 class="text-xl font-semibold mb-4">Manufacturing Regions</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                            <!-- North America -->
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="navigateTo('North America', 1)">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-bold text-lg">NORTH AMERICA</h3>
+                                    <i class="fas fa-arrow-right text-carrier-blue"></i>
+                                </div>
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-industry text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Plants</div>
+                                    <div class="ml-auto text-lg">15</div>
+                                </div>
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-cog text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Production Lines</div>
+                                    <div class="ml-auto text-lg">89</div>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-microchip text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Critical Assets</div>
+                                    <div class="ml-auto text-lg">2,847</div>
+                                </div>
+                            </div>
+
+                            <!-- Europe -->
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="navigateTo('Europe', 1)">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-bold text-lg">EUROPE</h3>
+                                    <i class="fas fa-arrow-right text-carrier-blue"></i>
+                                </div>
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-industry text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Plants</div>
+                                    <div class="ml-auto text-lg">12</div>
+                                </div>
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-cog text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Production Lines</div>
+                                    <div class="ml-auto text-lg">67</div>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-microchip text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Critical Assets</div>
+                                    <div class="ml-auto text-lg">1,956</div>
+                                </div>
+                            </div>
+
+                            <!-- Asia Pacific -->
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="navigateTo('Asia Pacific', 1)">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-bold text-lg">ASIA PACIFIC</h3>
+                                    <i class="fas fa-arrow-right text-carrier-blue"></i>
+                                </div>
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-industry text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Plants</div>
+                                    <div class="ml-auto text-lg">18</div>
+                                </div>
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-cog text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Production Lines</div>
+                                    <div class="ml-auto text-lg">95</div>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-microchip text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Critical Assets</div>
+                                    <div class="ml-auto text-lg">3,421</div>
+                                </div>
+                            </div>
+
+                            <!-- Latin America -->
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="navigateTo('Latin America', 1)">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-bold text-lg">LATIN AMERICA</h3>
+                                    <i class="fas fa-arrow-right text-carrier-blue"></i>
+                                </div>
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-industry text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Plants</div>
+                                    <div class="ml-auto text-lg">8</div>
+                                </div>
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-cog text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Production Lines</div>
+                                    <div class="ml-auto text-lg">34</div>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-microchip text-xl text-carrier-blue mr-2"></i>
+                                    <div class="text-sm text-gray-400">Critical Assets</div>
+                                    <div class="ml-auto text-lg">1,278</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Global Manufacturing Statistics -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 stat-card">
+                                <div class="text-gray-400 mb-1">Total Plants</div>
+                                <div class="text-3xl font-bold">53</div>
+                                <div class="text-sm text-green-500 mt-2">
+                                    <i class="fas fa-arrow-up mr-1"></i> 6% from last year
+                                </div>
+                            </div>
+                            
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 stat-card">
+                                <div class="text-gray-400 mb-1">Production Lines</div>
+                                <div class="text-3xl font-bold">285</div>
+                                <div class="text-sm text-green-500 mt-2">
+                                    <i class="fas fa-arrow-up mr-1"></i> 12% efficiency gain
+                                </div>
+                            </div>
+                            
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 stat-card">
+                                <div class="text-gray-400 mb-1">Critical Assets</div>
+                                <div class="text-3xl font-bold">9,502</div>
+                                <div class="text-sm text-green-500 mt-2">
+                                    <i class="fas fa-arrow-up mr-1"></i> 97.8% uptime
+                                </div>
+                            </div>
+
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 stat-card">
+                                <div class="text-gray-400 mb-1">OEE Score</div>
+                                <div class="text-3xl font-bold">89.3%</div>
+                                <div class="text-sm text-green-500 mt-2">
+                                    <i class="fas fa-arrow-up mr-1"></i> +2.1% this month
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Key Performance Indicators -->
+                        <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 mb-6">
+                            <h3 class="text-lg font-semibold mb-4">Real-Time Manufacturing KPIs</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="text-center">
+                                    <div class="text-gray-400 mb-2">Label Printer Uptime</div>
+                                    <div class="text-4xl font-bold text-green-500 mb-2">98.7%</div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-green-500 h-2 rounded-full" style="width: 98.7%"></div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-gray-400 mb-2">Production Output</div>
+                                    <div class="text-4xl font-bold text-blue-500 mb-2">94.2%</div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-blue-500 h-2 rounded-full" style="width: 94.2%"></div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-gray-400 mb-2">Quality Score</div>
+                                    <div class="text-4xl font-bold text-yellow-500 mb-2">96.8%</div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-yellow-500 h-2 rounded-full" style="width: 96.8%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Region View -->
+                    <div id="region-view" class="view-transition">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold" id="region-heading">Manufacturing Plants in North America</h2>
+                            <div class="flex gap-2">
+                                <button class="bg-carrier-panel border border-carrier-border rounded px-2 py-1 text-sm">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                                <button class="bg-carrier-panel border border-carrier-border rounded px-2 py-1 text-sm">
+                                    <i class="fas fa-sort-alpha-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="plants-grid">
+                            <!-- Plants will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Plant View -->
+                    <div id="plant-view" class="view-transition">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold" id="plant-heading">Plant Name</h2>
+                            <div class="flex gap-2">
+                                <button class="bg-carrier-panel border border-carrier-border rounded px-2 py-1 text-sm">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                                <button class="bg-carrier-panel border border-carrier-border rounded px-2 py-1 text-sm">
+                                    <i class="fas fa-sort-alpha-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Plant Information -->
+                        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+                            <div class="lg:col-span-1 bg-carrier-panel border border-carrier-border rounded-md p-4">
+                                <div class="flex items-center mb-4">
+                                    <i class="fas fa-industry text-3xl text-carrier-blue mr-4"></i>
+                                    <div>
+                                        <div class="text-sm text-gray-400">Plant Code</div>
+                                        <div class="text-2xl font-bold" id="plant-code">PLT001</div>
+                                    </div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div>
+                                        <div class="text-sm text-gray-400">Status</div>
+                                        <div class="flex items-center mt-1">
+                                            <span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+                                            <span>Operational</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm text-gray-400">Daily Output</div>
+                                        <div class="text-lg">847 Units</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm text-gray-400">Last Maintenance</div>
+                                        <div class="text-lg">2023-11-15</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="lg:col-span-3 bg-carrier-panel border border-carrier-border rounded-md p-4">
+                                <div class="flex justify-between items-start mb-4">
+                                    <h3 class="text-lg font-semibold">Plant Layout</h3>
+                                    <div class="flex space-x-2">
+                                        <button class="bg-carrier-darker px-3 py-1 rounded-md text-sm flex items-center">
+                                            <i class="fas fa-expand-arrows-alt mr-1"></i> Zoom
+                                        </button>
+                                        <button class="bg-carrier-darker px-3 py-1 rounded-md text-sm flex items-center">
+                                            <i class="fas fa-print mr-1"></i> Print
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-black rounded-md h-48 flex items-center justify-center">
+                                    <svg viewBox="0 0 800 400" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+                                        <!-- Manufacturing floor layout -->
+                                        <rect x="50" y="100" width="700" height="200" fill="none" stroke="#444" stroke-width="2"></rect>
+                                        
+                                        <!-- Production Line Areas -->
+                                        <rect x="100" y="120" width="150" height="80" fill="none" stroke="#0066cc" stroke-width="2"></rect>
+                                        <rect x="300" y="120" width="150" height="80" fill="none" stroke="#0066cc" stroke-width="2"></rect>
+                                        <rect x="500" y="120" width="150" height="80" fill="none" stroke="#0066cc" stroke-width="2"></rect>
+                                        
+                                        <!-- Production line markers -->
+                                        <circle cx="175" cy="160" r="15" fill="#0066cc" opacity="0.7"></circle>
+                                        <text x="175" y="165" text-anchor="middle" fill="white" font-size="12">PL1</text>
+                                        
+                                        <circle cx="375" cy="160" r="15" fill="#0066cc" opacity="0.7"></circle>
+                                        <text x="375" y="165" text-anchor="middle" fill="white" font-size="12">PL2</text>
+                                        
+                                        <circle cx="575" cy="160" r="15" fill="#0066cc" opacity="0.7"></circle>
+                                        <text x="575" y="165" text-anchor="middle" fill="white" font-size="12">PL3</text>
+
+                                        <!-- Support areas -->
+                                        <rect x="100" y="220" width="100" height="60" fill="none" stroke="#666" stroke-width="1"></rect>
+                                        <text x="150" y="255" text-anchor="middle" fill="#ccc" font-size="10">QC</text>
+                                        
+                                        <rect x="550" y="220" width="100" height="60" fill="none" stroke="#666" stroke-width="1"></rect>
+                                        <text x="600" y="255" text-anchor="middle" fill="#ccc" font-size="10">PACK</text>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="text-lg font-semibold mb-3">Production Lines</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="production-lines-grid">
+                            <!-- Production lines will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Production Line View -->
+                    <div id="production-line-view" class="view-transition">
+                        <div class="mb-4">
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md p-3 flex justify-between items-center">
+                                <div class="flex items-center">
+                                    <span class="font-semibold text-lg" id="production-line-title"></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="text-gray-400 hover:text-white">
+                                        <i class="fas fa-filter"></i>
+                                    </button>
+                                    <button class="text-gray-400 hover:text-white">
+                                        <i class="fas fa-sort-alpha-down"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Production Line Dashboard -->
+                        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+                            <!-- Line Status -->
+                            <div class="lg:col-span-1">
+                                <div class="bg-carrier-panel border border-carrier-border rounded-md p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div>
+                                            <h2 class="text-lg font-semibold" id="line-id-header">PL1</h2>
+                                            <div class="text-sm text-gray-400">Output Efficiency</div>
+                                        </div>
+                                        <div class="bg-green-500 rounded-full w-12 h-12 flex items-center justify-center" id="line-icon-bg">
+                                            <i class="fas fa-cog text-white text-xl"></i>
+                                        </div>
+                                    </div>
+                                    <div class="text-green-500 text-5xl font-bold mb-3" id="line-efficiency">94.2%</div>
+                                    <div class="flex justify-between text-sm text-gray-400 mb-1">
+                                        <span>LAST READING</span>
+                                        <div>
+                                            <span id="line-date">2023/11/29</span>
+                                            <span id="line-time">15:22:12</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-carrier-darker rounded-full h-2.5 mb-2">
+                                        <div class="bg-green-500 h-2.5 rounded-full" id="line-efficiency-bar" style="width: 94%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Production Metrics -->
+                            <div class="lg:col-span-3">
+                                <div class="bg-carrier-panel border border-carrier-border rounded-md p-4">
+                                    <h3 class="text-lg font-semibold mb-4">Production Metrics</h3>
+                                    <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+                                        <div class="text-center">
+                                            <div class="text-sm text-gray-400">Output Rate</div>
+                                            <div class="text-xl">847/hr</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-sm text-gray-400">Defect Rate</div>
+                                            <div class="text-xl">0.3%</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-sm text-gray-400">Cycle Time</div>
+                                            <div class="text-xl">4.2s</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-sm text-gray-400">Downtime</div>
+                                            <div class="text-xl">12min</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-sm text-gray-400">Energy Usage</div>
+                                            <div class="text-xl">156 kW</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-sm text-gray-400">Alerts</div>
+                                            <div class="text-xl">1 <span class="text-yellow-500">⚠</span></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-4">
+                                        <div class="text-sm text-gray-400 mb-1">Overall Equipment Effectiveness (OEE)</div>
+                                        <div class="w-full bg-carrier-darker rounded-full h-2.5">
+                                            <div class="bg-carrier-blue h-2.5 rounded-full" style="width: 89%"></div>
+                                        </div>
+                                        <div class="flex justify-between mt-1 text-xs">
+                                            <span>0%</span>
+                                            <span class="text-carrier-blue">89%</span>
+                                            <span>100%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Asset Categories -->
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-3">Critical Asset Categories</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="showAssetList('Label Printers')">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-print text-2xl text-carrier-blue mr-3"></i>
+                                            <div>
+                                                <div>Label Printers</div>
+                                                <div class="text-sm text-gray-400">8 units</div>
+                                                <div class="flex items-center mt-1 text-xs">
+                                                    <div class="text-gray-400 mr-2">Status:</div>
+                                                    <div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>6</div>
+                                                    <div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>1</div>
+                                                    <div class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1"></span>1</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <i class="fas fa-chevron-right text-gray-500"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="showAssetList('Assembly Robots')">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-robot text-2xl text-carrier-blue mr-3"></i>
+                                            <div>
+                                                <div>Assembly Robots</div>
+                                                <div class="text-sm text-gray-400">12 units</div>
+                                                <div class="flex items-center mt-1 text-xs">
+                                                    <div class="text-gray-400 mr-2">Status:</div>
+                                                    <div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>10</div>
+                                                    <div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>1</div>
+                                                    <div class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1"></span>1</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <i class="fas fa-chevron-right text-gray-500"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="showAssetList('Conveyor Systems')">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-conveyor-belt text-2xl text-carrier-blue mr-3"></i>
+                                            <div>
+                                                <div>Conveyor Systems</div>
+                                                <div class="text-sm text-gray-400">6 systems</div>
+                                                <div class="flex items-center mt-1 text-xs">
+                                                    <div class="text-gray-400 mr-2">Status:</div>
+                                                    <div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>5</div>
+                                                    <div class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>1</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <i class="fas fa-chevron-right text-gray-500"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="showAssetList('Quality Control')">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-search-plus text-2xl text-carrier-blue mr-3"></i>
+                                            <div>
+                                                <div>Quality Control</div>
+                                                <div class="text-sm text-gray-400">4 stations</div>
+                                                <div class="flex items-center mt-1 text-xs">
+                                                    <div class="text-gray-400 mr-2">Status:</div>
+                                                    <div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>3</div>
+                                                    <div class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>1</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <i class="fas fa-chevron-right text-gray-500"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="showAssetList('PLCs')">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-microchip text-2xl text-carrier-blue mr-3"></i>
+                                            <div>
+                                                <div>PLCs & Controls</div>
+                                                <div class="text-sm text-gray-400">24 units</div>
+                                                <div class="flex items-center mt-1 text-xs">
+                                                    <div class="text-gray-400 mr-2">Status:</div>
+                                                    <div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>22</div>
+                                                    <div class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>2</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <i class="fas fa-chevron-right text-gray-500"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer" onclick="showAssetList('HVAC Systems')">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-wind text-2xl text-carrier-blue mr-3"></i>
+                                            <div>
+                                                <div>HVAC Systems</div>
+                                                <div class="text-sm text-gray-400">3 units</div>
+                                                <div class="flex items-center mt-1 text-xs">
+                                                    <div class="text-gray-400 mr-2">Status:</div>
+                                                    <div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>2</div>
+                                                    <div class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1"></span>1</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <i class="fas fa-chevron-right text-gray-500"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Asset List - Initially Hidden -->
+                        <div id="asset-list" class="mb-6 hidden">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="text-xl font-semibold"><span id="asset-category">Category</span> Assets</h3>
+                                <button class="text-sm bg-carrier-darker px-3 py-1 rounded-md" onclick="hideAssetList()">
+                                    <i class="fas fa-times mr-1"></i> Close
+                                </button>
+                            </div>
+                            
+                            <div class="bg-carrier-panel border border-carrier-border rounded-md overflow-hidden">
+                                <table class="min-w-full divide-y divide-carrier-border">
+                                    <thead class="bg-carrier-darker">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Asset ID</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Last Check</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Performance</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-carrier-panel divide-y divide-carrier-border" id="asset-table-body">
+                                        <!-- Asset rows will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Production Line Visualization -->
+                        <div class="bg-carrier-panel border border-carrier-border rounded-md overflow-hidden">
+                            <div class="p-3 border-b border-carrier-border flex justify-between items-center">
+                                <div class="font-semibold">PRODUCTION LINE VISUALIZATION</div>
+                                <div class="flex space-x-3">
+                                    <div class="flex items-center text-xs">
+                                        <span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span>
+                                        <span>Operational</span>
+                                    </div>
+                                    <div class="flex items-center text-xs">
+                                        <span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1"></span>
+                                        <span>Warning</span>
+                                    </div>
+                                    <div class="flex items-center text-xs">
+                                        <span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span>
+                                        <span>Critical</span>
+                                    </div>
+                                    <div class="flex items-center text-xs">
+                                        <span class="inline-block w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
+                                        <span>Maintenance</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Asset Category Filter -->
+                            <div class="p-3 border-b border-carrier-border bg-carrier-darker">
+                                <div class="flex items-center text-sm mb-1">
+                                    <span class="mr-2 text-gray-400">Filter by asset type:</span>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button id="filter-all" class="px-3 py-1 rounded bg-carrier-blue text-white text-xs" onclick="filterMapAssets('all')">All Assets</button>
+                                    <button id="filter-label-printers" class="px-3 py-1 rounded bg-carrier-panel text-gray-300 text-xs" onclick="filterMapAssets('Label Printers')">Label Printers</button>
+                                    <button id="filter-assembly" class="px-3 py-1 rounded bg-carrier-panel text-gray-300 text-xs" onclick="filterMapAssets('Assembly Robots')">Assembly Robots</button>
+                                    <button id="filter-conveyor" class="px-3 py-1 rounded bg-carrier-panel text-gray-300 text-xs" onclick="filterMapAssets('Conveyor Systems')">Conveyor</button>
+                                    <button id="filter-quality" class="px-3 py-1 rounded bg-carrier-panel text-gray-300 text-xs" onclick="filterMapAssets('Quality Control')">Quality Control</button>
+                                    <button id="filter-plcs" class="px-3 py-1 rounded bg-carrier-panel text-gray-300 text-xs" onclick="filterMapAssets('PLCs')">PLCs</button>
+                                    <button id="filter-hvac" class="px-3 py-1 rounded bg-carrier-panel text-gray-300 text-xs" onclick="filterMapAssets('HVAC Systems')">HVAC</button>
+                                </div>
+                            </div>
+                            
+                            <div class="p-3 bg-black relative">
+                                <div class="relative bg-gray-900 rounded-lg p-4 min-h-96">
+                                    <!-- Production line schematic -->
+                                    <svg viewBox="0 0 1200 600" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+                                        <!-- Production Line Flow -->
+                                        <rect x="50" y="250" width="1100" height="100" fill="none" stroke="#333" stroke-width="2"></rect>
+                                        
+                                        <!-- Conveyor belt representation -->
+                                        <line x1="50" y1="300" x2="1150" y2="300" stroke="#555" stroke-width="4"></line>
+                                        
+                                        <!-- Station boxes -->
+                                        <rect x="100" y="200" width="120" height="200" fill="none" stroke="#0066cc" stroke-width="2"></rect>
+                                        <rect x="300" y="200" width="120" height="200" fill="none" stroke="#0066cc" stroke-width="2"></rect>
+                                        <rect x="500" y="200" width="120" height="200" fill="none" stroke="#0066cc" stroke-width="2"></rect>
+                                        <rect x="700" y="200" width="120" height="200" fill="none" stroke="#0066cc" stroke-width="2"></rect>
+                                        <rect x="900" y="200" width="120" height="200" fill="none" stroke="#0066cc" stroke-width="2"></rect>
+                                        
+                                        <!-- Station labels -->
+                                        <text x="160" y="190" text-anchor="middle" fill="#ccc" font-size="12">Assembly</text>
+                                        <text x="360" y="190" text-anchor="middle" fill="#ccc" font-size="12">Label Print</text>
+                                        <text x="560" y="190" text-anchor="middle" fill="#ccc" font-size="12">Quality Check</text>
+                                        <text x="760" y="190" text-anchor="middle" fill="#ccc" font-size="12">Packaging</text>
+                                        <text x="960" y="190" text-anchor="middle" fill="#ccc" font-size="12">Shipping</text>
+                                    </svg>
+                                    
+                                    <!-- Label Printer Assets -->
+                                    <div class="absolute top-[45%] left-[30%] group cursor-pointer asset-dot" data-asset-type="Label Printers">
+                                        <div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white animate-pulse"></div>
+                                        <div class="hidden group-hover:block absolute z-10 bg-carrier-darker border border-carrier-border rounded-md p-2 text-xs w-40 -translate-x-1/2 -translate-y-[105%] transform">
+                                            <div class="font-bold">LBL-PRT-001</div>
+                                            <div>Zebra ZT610 Industrial</div>
+                                            <div class="text-green-500">Operational</div>
+                                            <div>Performance: 98.5%</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="absolute top-[35%] left-[32%] group cursor-pointer asset-dot" data-asset-type="Label Printers">
+                                        <div class="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white animate-pulse"></div>
+                                        <div class="hidden group-hover:block absolute z-10 bg-carrier-darker border border-carrier-border rounded-md p-2 text-xs w-40 -translate-x-1/2 -translate-y-[105%] transform">
+                                            <div class="font-bold">LBL-PRT-002</div>
+                                            <div>Zebra ZT230 Direct Thermal</div>
+                                            <div class="text-yellow-500">Warning</div>
+                                            <div>Performance: 74.2%</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Assembly Robot Assets -->
+                                    <div class="absolute top-[40%] left-[13%] group cursor-pointer asset-dot" data-asset-type="Assembly Robots">
+                                        <div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white animate-pulse"></div>
+                                        <div class="hidden group-hover:block absolute z-10 bg-carrier-darker border border-carrier-border rounded-md p-2 text-xs w-40 -translate-x-1/2 -translate-y-[105%] transform">
+                                            <div class="font-bold">ASM-ROB-001</div>
+                                            <div>KUKA KR 6 R900</div>
+                                            <div class="text-green-500">Operational</div>
+                                            <div>Performance: 96.8%</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Quality Control Assets -->
+                                    <div class="absolute top-[42%] left-[47%] group cursor-pointer asset-dot" data-asset-type="Quality Control">
+                                        <div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white animate-pulse"></div>
+                                        <div class="hidden group-hover:block absolute z-10 bg-carrier-darker border border-carrier-border rounded-md p-2 text-xs w-40 -translate-x-1/2 -translate-y-[105%] transform">
+                                            <div class="font-bold">QC-VIS-001</div>
+                                            <div>Vision Inspection System</div>
+                                            <div class="text-green-500">Operational</div>
+                                            <div>Performance: 99.1%</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Conveyor System Assets -->
+                                    <div class="absolute top-[55%] left-[25%] group cursor-pointer asset-dot" data-asset-type="Conveyor Systems">
+                                        <div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white animate-pulse"></div>
+                                        <div class="hidden group-hover:block absolute z-10 bg-carrier-darker border border-carrier-border rounded-md p-2 text-xs w-40 -translate-x-1/2 -translate-y-[105%] transform">
+                                            <div class="font-bold">CNV-001</div>
+                                            <div>Main Conveyor Belt</div>
+                                            <div class="text-green-500">Operational</div>
+                                            <div>Performance: 97.3%</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- PLC Assets -->
+                                    <div class="absolute top-[25%] left-[20%] group cursor-pointer asset-dot" data-asset-type="PLCs">
+                                        <div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white animate-pulse"></div>
+                                        <div class="hidden group-hover:block absolute z-10 bg-carrier-darker border border-carrier-border rounded-md p-2 text-xs w-40 -translate-x-1/2 -translate-y-[105%] transform">
+                                            <div class="font-bold">PLC-CTL-001</div>
+                                            <div>Line Control PLC</div>
+                                            <div class="text-green-500">Operational</div>
+                                            <div>Performance: 99.8%</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- HVAC Assets -->
+                                    <div class="absolute top-[15%] left-[50%] group cursor-pointer asset-dot" data-asset-type="HVAC Systems">
+                                        <div class="w-4 h-4 rounded-full bg-blue-500 border-2 border-white animate-pulse"></div>
+                                        <div class="hidden group-hover:block absolute z-10 bg-carrier-darker border border-carrier-border rounded-md p-2 text-xs w-40 -translate-x-1/2 -translate-y-[105%] transform">
+                                            <div class="font-bold">HVAC-001</div>
+                                            <div>Carrier AquaEdge 19DV</div>
+                                            <div class="text-blue-500">Maintenance</div>
+                                            <div>Performance: 85.6%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Maintenance Dashboard Panel -->
+        <div id="maintenance-dashboard" class="fixed inset-0 bg-black bg-opacity-50 z-60 hidden flex items-center justify-center">
+            <div class="bg-carrier-darker border border-carrier-border rounded-lg shadow-xl max-w-7xl w-full mx-4 max-h-[95vh] overflow-y-auto">
+                <div class="p-6">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold flex items-center">
+                                <i class="fas fa-tools text-carrier-blue mr-3"></i>
+                                Predictive Maintenance Dashboard
+                            </h2>
+                            <p class="text-gray-400 mt-1">AI-Driven Maintenance Scheduling & Asset Management</p>
+                        </div>
+                        <button id="close-maintenance-dashboard" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Maintenance Statistics -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-carrier-panel border border-carrier-border rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-gray-400 text-sm">Scheduled Tasks</div>
+                                    <div class="text-2xl font-bold" id="scheduled-count">4</div>
+                                </div>
+                                <div class="bg-blue-500 rounded-full w-12 h-12 flex items-center justify-center">
+                                    <i class="fas fa-calendar-check text-white"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-carrier-panel border border-carrier-border rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-gray-400 text-sm">In Progress</div>
+                                    <div class="text-2xl font-bold" id="inprogress-count">2</div>
+                                </div>
+                                <div class="bg-yellow-500 rounded-full w-12 h-12 flex items-center justify-center">
+                                    <i class="fas fa-wrench text-white"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-carrier-panel border border-carrier-border rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-gray-400 text-sm">Predictive Alerts</div>
+                                    <div class="text-2xl font-bold" id="predictive-alerts-count">2</div>
+                                </div>
+                                <div class="bg-orange-500 rounded-full w-12 h-12 flex items-center justify-center">
+                                    <i class="fas fa-brain text-white"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-carrier-panel border border-carrier-border rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-gray-400 text-sm">Completed Today</div>
+                                    <div class="text-2xl font-bold" id="completed-count">3</div>
+                                </div>
+                                <div class="bg-green-500 rounded-full w-12 h-12 flex items-center justify-center">
+                                    <i class="fas fa-check-circle text-white"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter and Actions -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <h3 class="text-lg font-semibold">Maintenance Schedule</h3>
+                            <div class="flex space-x-2">
+                                <button class="maintenance-filter-btn active bg-carrier-blue text-white px-3 py-1 rounded text-sm" data-status="all">
+                                    All
+                                </button>
+                                <button class="maintenance-filter-btn bg-carrier-panel text-gray-300 px-3 py-1 rounded text-sm" data-status="scheduled">
+                                    Scheduled
+                                </button>
+                                <button class="maintenance-filter-btn bg-carrier-panel text-gray-300 px-3 py-1 rounded text-sm" data-status="in-progress">
+                                    In Progress
+                                </button>
+                                <button class="maintenance-filter-btn bg-carrier-panel text-gray-300 px-3 py-1 rounded text-sm" data-status="predictive">
+                                    Predictive
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="schedule-maintenance-btn" class="bg-carrier-blue hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm">
+                                <i class="fas fa-plus mr-2"></i>Schedule Maintenance
+                            </button>
+                            <button class="bg-carrier-panel hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm">
+                                <i class="fas fa-download mr-2"></i>Export
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Maintenance Table -->
+                    <div class="bg-carrier-panel border border-carrier-border rounded-lg overflow-hidden">
+                        <table class="min-w-full divide-y divide-carrier-border">
+                            <thead class="bg-carrier-darker">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        Work Order
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        Asset
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        Plant / Location
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        Type
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        Priority
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        Scheduled Date
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        Technician
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-carrier-panel divide-y divide-carrier-border" id="maintenance-table-body">
+                                <!-- Maintenance rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule Maintenance Modal -->
+        <div id="schedule-maintenance-modal" class="fixed inset-0 bg-black bg-opacity-50 z-70 hidden flex items-center justify-center">
+            <div class="bg-carrier-darker border border-carrier-border rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-semibold">Schedule New Maintenance</h3>
+                        <button id="close-schedule-modal" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="schedule-maintenance-form" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Asset ID</label>
+                                <select id="asset-select" class="w-full bg-carrier-panel border border-carrier-border rounded-md px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-carrier-blue">
+                                    <option value="">Select Asset</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Maintenance Type</label>
+                                <select id="maintenance-type" class="w-full bg-carrier-panel border border-carrier-border rounded-md px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-carrier-blue">
+                                    <option value="preventive">Preventive</option>
+                                    <option value="corrective">Corrective</option>
+                                    <option value="predictive">Predictive</option>
+                                    <option value="emergency">Emergency</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Priority</label>
+                                <select id="priority-select" class="w-full bg-carrier-panel border border-carrier-border rounded-md px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-carrier-blue">
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Scheduled Date</label>
+                                <input type="datetime-local" id="scheduled-date" class="w-full bg-carrier-panel border border-carrier-border rounded-md px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-carrier-blue">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-2">Technician</label>
+                            <select id="technician-select" class="w-full bg-carrier-panel border border-carrier-border rounded-md px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-carrier-blue">
+                                <option value="john.martinez">John Martinez (Field Technician)</option>
+                                <option value="sarah.chen">Sarah Chen (Senior Technician)</option>
+                                <option value="mike.johnson">Mike Johnson (Specialist)</option>
+                                <option value="lisa.wong">Lisa Wong (Lead Technician)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-2">Description</label>
+                            <textarea id="maintenance-description" rows="3" class="w-full bg-carrier-panel border border-carrier-border rounded-md px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-carrier-blue" placeholder="Describe the maintenance task..."></textarea>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <button type="button" id="cancel-schedule" class="bg-carrier-panel hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm">
+                                Cancel
+                            </button>
+                            <button type="submit" class="bg-carrier-blue hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm">
+                                Schedule Maintenance
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Panel -->
+        <div id="alerts-panel" class="fixed top-0 right-0 h-full w-96 bg-carrier-darker border-l border-carrier-border transform translate-x-full transition-transform duration-300 ease-in-out z-50 shadow-xl">
+            <div class="h-full flex flex-col">
+                <!-- Header -->
+                <div class="p-4 border-b border-carrier-border">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold">Real-Time Alerts</h3>
+                        <button id="close-alerts-panel" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center mt-2 text-sm text-gray-400">
+                        <i class="fas fa-brain mr-2 text-carrier-blue"></i>
+                        <span>Powered by blauLabs AI Predictive Analytics</span>
+                    </div>
+                </div>
+
+                <!-- Alert Categories -->
+                <div class="p-4 border-b border-carrier-border">
+                    <div class="flex space-x-2">
+                        <button class="alert-filter-btn active bg-carrier-blue text-white px-3 py-1 rounded text-sm" data-type="all">
+                            All <span class="ml-1 bg-white/20 px-1.5 py-0.5 rounded-full text-xs" id="all-count">8</span>
+                        </button>
+                        <button class="alert-filter-btn bg-carrier-panel text-gray-300 px-3 py-1 rounded text-sm" data-type="critical">
+                            Critical <span class="ml-1 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs" id="critical-count">3</span>
+                        </button>
+                        <button class="alert-filter-btn bg-carrier-panel text-gray-300 px-3 py-1 rounded text-sm" data-type="predictive">
+                            Predictive <span class="ml-1 bg-orange-500 text-white px-1.5 py-0.5 rounded-full text-xs" id="predictive-count">2</span>
+                        </button>
+                        <button class="alert-filter-btn bg-carrier-panel text-gray-300 px-3 py-1 rounded text-sm" data-type="servicenow">
+                            ServiceNow <span class="ml-1 bg-blue-500 text-white px-1.5 py-0.5 rounded-full text-xs" id="servicenow-count">3</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Alerts List -->
+                <div class="flex-1 overflow-y-auto" id="alerts-container">
+                    <!-- Alerts will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Overlay for alerts panel -->
+        <div id="alerts-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
+        <!-- ServiceNow Ticket Modal -->
+        <div id="servicenow-modal" class="fixed inset-0 bg-black bg-opacity-50 z-60 hidden flex items-center justify-center">
+            <div class="bg-carrier-darker border border-carrier-border rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-ticket-alt text-blue-500 mr-2"></i>
+                            ServiceNow Ticket Created
+                        </h3>
+                        <button id="close-servicenow-modal" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="servicenow-ticket-content">
+                        <!-- Ticket content will be populated here -->
+                    </div>
+                    
+                    <div class="flex items-center justify-between mt-6 pt-4 border-t border-carrier-border">
+                        <div class="flex items-center text-sm text-gray-400">
+                            <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                            <span>Automatically generated by blauLabs AI</span>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button id="view-in-servicenow" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm">
+                                <i class="fas fa-external-link-alt mr-2"></i>View in ServiceNow
+                            </button>
+                            <button id="close-servicenow-modal-btn" class="bg-carrier-panel hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Navigation state
+        let currentLevel = 0;
+        let navigationPath = [
+            { name: 'Home', level: 0 }
+        ];
+        
+        // Sample manufacturing data
+        const regions = ['North America', 'Europe', 'Asia Pacific', 'Latin America'];
+        
+        const plants = {
+            'North America': [
+                { code: 'PLT001', name: 'Syracuse HVAC Manufacturing', location: 'Syracuse, NY', lines: 6 },
+                { code: 'PLT002', name: 'Carrier Controls Manufacturing', location: 'Charlotte, NC', lines: 4 },
+                { code: 'PLT003', name: 'Refrigeration Systems Plant', location: 'Tyler, TX', lines: 5 },
+                { code: 'PLT004', name: 'Heat Pump Assembly', location: 'McMinnville, TN', lines: 3 },
+                { code: 'PLT005', name: 'Commercial HVAC Plant', location: 'Monterrey, Mexico', lines: 7 },
+                { code: 'PLT006', name: 'Fire & Security Manufacturing', location: 'Marietta, GA', lines: 4 }
+            ],
+            'Europe': [
+                { code: 'PLT010', name: 'Carrier Europe Manufacturing', location: 'Montluel, France', lines: 5 },
+                { code: 'PLT011', name: 'Refrigeration Plant Europe', location: 'Eger, Hungary', lines: 4 },
+                { code: 'PLT012', name: 'HVAC Components Plant', location: 'Worms, Germany', lines: 6 },
+                { code: 'PLT013', name: 'Heat Exchanger Manufacturing', location: 'Galway, Ireland', lines: 3 }
+            ],
+            'Asia Pacific': [
+                { code: 'PLT020', name: 'Carrier Asia Manufacturing', location: 'Shanghai, China', lines: 8 },
+                { code: 'PLT021', name: 'Toshiba Carrier Manufacturing', location: 'Fuji, Japan', lines: 6 },
+                { code: 'PLT022', name: 'Southeast Asia Plant', location: 'Rayong, Thailand', lines: 5 },
+                { code: 'PLT023', name: 'India Manufacturing Hub', location: 'Pune, India', lines: 7 }
+            ],
+            'Latin America': [
+                { code: 'PLT030', name: 'Brazil Manufacturing Center', location: 'São Paulo, Brazil', lines: 6 },
+                { code: 'PLT031', name: 'Argentina Production Plant', location: 'Buenos Aires, Argentina', lines: 3 }
+            ]
+        };
+        
+        const productionLines = {
+            'PLT001': [
+                { id: 'PL1', name: 'HVAC Assembly Line 1', efficiency: 94.2, status: 'Operational' },
+                { id: 'PL2', name: 'Heat Exchanger Line', efficiency: 87.5, status: 'Warning' },
+                { id: 'PL3', name: 'Controls Assembly', efficiency: 96.8, status: 'Operational' },
+                { id: 'PL4', name: 'Fan Coil Production', efficiency: 91.3, status: 'Operational' },
+                { id: 'PL5', name: 'Packaging Line', efficiency: 89.7, status: 'Operational' },
+                { id: 'PL6', name: 'Quality Control Station', efficiency: 98.1, status: 'Operational' }
+            ]
+        };
+        
+        // Initialize other plant production lines with default data
+        Object.keys(plants).forEach(region => {
+            plants[region].forEach(plant => {
+                if (!productionLines[plant.code]) {
+                    productionLines[plant.code] = [];
+                    for (let i = 1; i <= plant.lines; i++) {
+                        const efficiency = 80 + Math.floor(Math.random() * 20);
+                        let status = 'Operational';
+                        if (efficiency < 85) status = 'Warning';
+                        if (efficiency < 80) status = 'Critical';
+                        
+                        productionLines[plant.code].push({
+                            id: `PL${i}`,
+                            name: `Production Line ${i}`,
+                            efficiency: efficiency,
+                            status: status
+                        });
+                    }
+                }
+            });
+        });
+
+        // Initialize alert data variable
+        let alertData = {};
+
+        // Generate consistent alert data based on production line statuses
+        function generateAlertData() {
+            alertData = {};
+            
+            Object.keys(plants).forEach(region => {
+                plants[region].forEach(plant => {
+                    const plantLines = productionLines[plant.code] || [];
+                    plantLines.forEach(line => {
+                        const lineKey = `${plant.code}-${line.id}`;
+                        let alerts = { critical: 0, warning: 0, info: 0 };
+                        
+                        // Generate alerts based on status
+                        if (line.status === 'Critical') {
+                            alerts.critical = 1 + Math.floor(Math.random() * 3); // 1-3 critical alerts
+                            alerts.warning = Math.floor(Math.random() * 2); // 0-1 warning alerts
+                        } else if (line.status === 'Warning') {
+                            alerts.warning = 1 + Math.floor(Math.random() * 3); // 1-3 warning alerts
+                            alerts.info = Math.floor(Math.random() * 2); // 0-1 info alerts
+                        } else {
+                            // Operational lines might still have some info alerts
+                            alerts.info = Math.floor(Math.random() * 2); // 0-1 info alerts
+                        }
+                        
+                        alertData[lineKey] = alerts;
+                    });
+                });
+            });
+        }
+
+        // Generate the alert data
+        generateAlertData();
+
+        // Function to calculate total alerts for a given hierarchy level
+        function calculateAlerts(itemId, level) {
+            let totalAlerts = { critical: 0, warning: 0, info: 0 };
+            
+            if (level === 'region') {
+                // Sum alerts from all plants in region
+                const regionPlants = plants[itemId] || [];
+                regionPlants.forEach(plant => {
+                    const plantAlerts = calculateAlerts(plant.code, 'plant');
+                    totalAlerts.critical += plantAlerts.critical;
+                    totalAlerts.warning += plantAlerts.warning;
+                    totalAlerts.info += plantAlerts.info;
+                });
+            } else if (level === 'plant') {
+                // Sum alerts from all production lines in plant
+                const plantLines = productionLines[itemId] || [];
+                plantLines.forEach(line => {
+                    const lineAlerts = alertData[`${itemId}-${line.id}`] || { critical: 0, warning: 0, info: 0 };
+                    totalAlerts.critical += lineAlerts.critical;
+                    totalAlerts.warning += lineAlerts.warning;
+                    totalAlerts.info += lineAlerts.info;
+                });
+            } else if (level === 'line') {
+                // Return alerts for specific production line
+                totalAlerts = alertData[itemId] || { critical: 0, warning: 0, info: 0 };
+            }
+            
+            return totalAlerts;
+        }
+
+        // Assets sample data by category
+        const assets = {
+            'Label Printers': [
+                { id: 'LBL-PRT-001', name: 'Zebra ZT610 Industrial Printer', status: 'Operational', lastCheck: '2023-11-25', performance: 98.5 },
+                { id: 'LBL-PRT-002', name: 'Zebra ZT230 Direct Thermal', status: 'Warning', lastCheck: '2023-11-26', performance: 74.2 },
+                { id: 'LBL-PRT-003', name: 'Honeywell PC42t Desktop', status: 'Operational', lastCheck: '2023-11-24', performance: 95.8 },
+                { id: 'LBL-PRT-004', name: 'Zebra ZT411 Industrial', status: 'Maintenance', lastCheck: '2023-11-22', performance: 67.3 },
+                { id: 'LBL-PRT-005', name: 'Brady BMP71 Portable', status: 'Operational', lastCheck: '2023-11-27', performance: 92.1 },
+                { id: 'LBL-PRT-006', name: 'Zebra ZD620 Desktop', status: 'Operational', lastCheck: '2023-11-25', performance: 96.7 },
+                { id: 'LBL-PRT-007', name: 'Honeywell PM45 Industrial', status: 'Operational', lastCheck: '2023-11-26', performance: 89.4 },
+                { id: 'LBL-PRT-008', name: 'Zebra GK420t Thermal', status: 'Operational', lastCheck: '2023-11-23', performance: 93.6 }
+            ],
+            'Assembly Robots': [
+                { id: 'ASM-ROB-001', name: 'KUKA KR 6 R900 Assembly Robot', status: 'Operational', lastCheck: '2023-11-25', performance: 96.8 },
+                { id: 'ASM-ROB-002', name: 'ABB IRB 1600 Welding Robot', status: 'Operational', lastCheck: '2023-11-24', performance: 94.2 },
+                { id: 'ASM-ROB-003', name: 'Fanuc LR Mate 200iD', status: 'Warning', lastCheck: '2023-11-22', performance: 78.5 },
+                { id: 'ASM-ROB-004', name: 'Universal Robots UR10', status: 'Operational', lastCheck: '2023-11-26', performance: 91.7 },
+                { id: 'ASM-ROB-005', name: 'Yaskawa Motoman GP8', status: 'Maintenance', lastCheck: '2023-11-20', performance: 65.3 }
+            ],
+            'Conveyor Systems': [
+                { id: 'CNV-001', name: 'Main Production Conveyor Belt', status: 'Operational', lastCheck: '2023-11-25', performance: 97.3 },
+                { id: 'CNV-002', name: 'Quality Control Conveyor', status: 'Operational', lastCheck: '2023-11-24', performance: 95.1 },
+                { id: 'CNV-003', name: 'Packaging Line Conveyor', status: 'Warning', lastCheck: '2023-11-23', performance: 82.7 },
+                { id: 'CNV-004', name: 'Material Transport System', status: 'Operational', lastCheck: '2023-11-26', performance: 88.9 }
+            ],
+            'Quality Control': [
+                { id: 'QC-VIS-001', name: 'Vision Inspection System', status: 'Operational', lastCheck: '2023-11-25', performance: 99.1 },
+                { id: 'QC-CMM-001', name: 'Coordinate Measuring Machine', status: 'Operational', lastCheck: '2023-11-24', performance: 97.6 },
+                { id: 'QC-LKT-001', name: 'Leak Test Station', status: 'Warning', lastCheck: '2023-11-22', performance: 76.8 },
+                { id: 'QC-FUN-001', name: 'Functional Test Bench', status: 'Operational', lastCheck: '2023-11-26', performance: 93.4 }
+            ],
+            'PLCs': [
+                { id: 'PLC-CTL-001', name: 'Main Line Control PLC', status: 'Operational', lastCheck: '2023-11-25', performance: 99.8 },
+                { id: 'PLC-CTL-002', name: 'Safety System PLC', status: 'Operational', lastCheck: '2023-11-24', performance: 98.2 },
+                { id: 'PLC-CTL-003', name: 'Material Handling PLC', status: 'Warning', lastCheck: '2023-11-23', performance: 85.7 },
+                { id: 'PLC-CTL-004', name: 'Quality Control PLC', status: 'Operational', lastCheck: '2023-11-26', performance: 96.5 }
+            ],
+            'HVAC Systems': [
+                { id: 'HVAC-001', name: 'Carrier AquaEdge 19DV Chiller', status: 'Maintenance', lastCheck: '2023-11-20', performance: 85.6 },
+                { id: 'HVAC-002', name: 'Air Handling Unit AHU-1', status: 'Operational', lastCheck: '2023-11-25', performance: 92.8 },
+                { id: 'HVAC-003', name: 'Rooftop Unit RTU-1', status: 'Operational', lastCheck: '2023-11-24', performance: 89.3 }
+            ]
+        };
+
+        // Tree data for manufacturing
+        const treeData = [
+            {
+                id: 'na',
+                name: 'North America',
+                icon: 'fas fa-map-marker-alt region-icon',
+                children: plants['North America'].map(plant => ({
+                    id: plant.code,
+                    name: plant.code,
+                    description: plant.name,
+                    icon: 'fas fa-industry plant-icon',
+                    children: productionLines[plant.code] ? productionLines[plant.code].map(line => ({
+                        id: `${plant.code}-${line.id}`,
+                        name: line.id,
+                        description: line.name,
+                        icon: 'fas fa-cog production-line-icon',
+                        status: line.status
+                    })) : []
+                }))
+            },
+            {
+                id: 'eu',
+                name: 'Europe',
+                icon: 'fas fa-map-marker-alt region-icon',
+                children: plants['Europe'].map(plant => ({
+                    id: plant.code,
+                    name: plant.code,
+                    description: plant.name,
+                    icon: 'fas fa-industry plant-icon',
+                    children: productionLines[plant.code] ? productionLines[plant.code].map(line => ({
+                        id: `${plant.code}-${line.id}`,
+                        name: line.id,
+                        description: line.name,
+                        icon: 'fas fa-cog production-line-icon',
+                        status: line.status
+                    })) : []
+                }))
+            },
+            {
+                id: 'ap',
+                name: 'Asia Pacific',
+                icon: 'fas fa-map-marker-alt region-icon',
+                children: plants['Asia Pacific'].map(plant => ({
+                    id: plant.code,
+                    name: plant.code,
+                    description: plant.name,
+                    icon: 'fas fa-industry plant-icon',
+                    children: productionLines[plant.code] ? productionLines[plant.code].map(line => ({
+                        id: `${plant.code}-${line.id}`,
+                        name: line.id,
+                        description: line.name,
+                        icon: 'fas fa-cog production-line-icon',
+                        status: line.status
+                    })) : []
+                }))
+            },
+            {
+                id: 'la',
+                name: 'Latin America',
+                icon: 'fas fa-map-marker-alt region-icon',
+                children: plants['Latin America'].map(plant => ({
+                    id: plant.code,
+                    name: plant.code,
+                    description: plant.name,
+                    icon: 'fas fa-industry plant-icon',
+                    children: productionLines[plant.code] ? productionLines[plant.code].map(line => ({
+                        id: `${plant.code}-${line.id}`,
+                        name: line.id,
+                        description: line.name,
+                        icon: 'fas fa-cog production-line-icon',
+                        status: line.status
+                    })) : []
+                }))
+            }
+        ];
+        
+        // Function to toggle tree navigation
+        document.getElementById('toggle-tree-nav').addEventListener('click', function(e) {
+            e.preventDefault();
+            const treeNav = document.getElementById('tree-navigation');
+            treeNav.classList.toggle('collapsed');
+        });
+        
+        // Function to build the tree view
+        function buildTreeView() {
+            const treeContainer = document.getElementById('tree-container');
+            treeContainer.innerHTML = '';
+            
+            treeData.forEach(region => {
+                const regionItem = createTreeItem(region, 0);
+                treeContainer.appendChild(regionItem);
+            });
+            
+            // Set up filter functionality
+            const treeFilter = document.getElementById('tree-filter');
+            treeFilter.addEventListener('input', function() {
+                filterTree(this.value.toLowerCase());
+            });
+        }
+        
+        // Function to create a tree item
+        function createTreeItem(item, level) {
+            const treeItem = document.createElement('div');
+            treeItem.className = 'tree-item';
+            treeItem.dataset.id = item.id;
+            treeItem.dataset.level = level;
+            
+            // Create item content
+            const itemContent = document.createElement('div');
+            itemContent.className = 'flex items-center py-2 px-3';
+            
+            // Indentation based on level
+            if (level > 0) {
+                const indent = document.createElement('div');
+                indent.className = 'w-' + (level * 5);
+                itemContent.appendChild(indent);
+            }
+            
+            // Add expand/collapse icon if item has children
+            if (item.children && item.children.length > 0) {
+                const expandIcon = document.createElement('i');
+                expandIcon.className = 'fas fa-chevron-right mr-2 text-gray-500 expand-icon';
+                itemContent.appendChild(expandIcon);
+            } else {
+                // Add placeholder for spacing if no children
+                const placeholder = document.createElement('div');
+                placeholder.className = 'w-4 mr-2';
+                itemContent.appendChild(placeholder);
+            }
+            
+            // Add item icon
+            const icon = document.createElement('i');
+            icon.className = `${item.icon} mr-2`;
+            itemContent.appendChild(icon);
+            
+            // Add item text
+            const text = document.createElement('span');
+            text.textContent = item.name;
+            itemContent.appendChild(text);
+            
+            // Add description if available
+            if (item.description) {
+                const description = document.createElement('span');
+                description.className = 'ml-2 text-xs text-gray-400';
+                description.textContent = item.description;
+                itemContent.appendChild(description);
+            }
+            
+            // Add alert counters for higher levels (regions and plants)
+            if (level === 0) {
+                // Region level - show aggregated alerts
+                const alerts = calculateAlerts(item.name, 'region');
+                const totalAlerts = alerts.critical + alerts.warning + alerts.info;
+                if (totalAlerts > 0) {
+                    const alertBadge = document.createElement('div');
+                    alertBadge.className = 'ml-auto flex items-center space-x-1';
+                    
+                    if (alerts.critical > 0) {
+                        const criticalBadge = document.createElement('span');
+                        criticalBadge.className = 'bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full';
+                        criticalBadge.textContent = alerts.critical;
+                        alertBadge.appendChild(criticalBadge);
+                    }
+                    
+                    if (alerts.warning > 0) {
+                        const warningBadge = document.createElement('span');
+                        warningBadge.className = 'bg-yellow-500 text-white text-xs px-1.5 py-0.5 rounded-full';
+                        warningBadge.textContent = alerts.warning;
+                        alertBadge.appendChild(warningBadge);
+                    }
+                    
+                    itemContent.appendChild(alertBadge);
+                }
+            } else if (level === 1) {
+                // Plant level - show aggregated alerts
+                const alerts = calculateAlerts(item.id, 'plant');
+                const totalAlerts = alerts.critical + alerts.warning + alerts.info;
+                if (totalAlerts > 0) {
+                    const alertBadge = document.createElement('div');
+                    alertBadge.className = 'ml-auto flex items-center space-x-1';
+                    
+                    if (alerts.critical > 0) {
+                        const criticalBadge = document.createElement('span');
+                        criticalBadge.className = 'bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full';
+                        criticalBadge.textContent = alerts.critical;
+                        alertBadge.appendChild(criticalBadge);
+                    }
+                    
+                    if (alerts.warning > 0) {
+                        const warningBadge = document.createElement('span');
+                        warningBadge.className = 'bg-yellow-500 text-white text-xs px-1.5 py-0.5 rounded-full';
+                        warningBadge.textContent = alerts.warning;
+                        alertBadge.appendChild(warningBadge);
+                    }
+                    
+                    itemContent.appendChild(alertBadge);
+                }
+            }
+
+            // Add status indicator if available (for production lines)
+            if (item.status) {
+                const statusClass = item.status === 'Operational' ? 'status-operational' : 
+                                   item.status === 'Warning' ? 'status-warning' : 
+                                   item.status === 'Critical' ? 'status-critical' : 'status-maintenance';
+                const status = document.createElement('span');
+                status.className = `status-dot ${statusClass}`;
+                itemContent.appendChild(status);
+            }
+            
+            treeItem.appendChild(itemContent);
+            
+            // Create container for children
+            if (item.children && item.children.length > 0) {
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'tree-children';
+                
+                item.children.forEach(child => {
+                    const childItem = createTreeItem(child, level + 1);
+                    childrenContainer.appendChild(childItem);
+                });
+                
+                treeItem.appendChild(childrenContainer);
+                
+                // Add click handler to toggle expand/collapse
+                itemContent.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const children = this.parentElement.querySelector('.tree-children');
+                    children.classList.toggle('expanded');
+                    this.querySelector('.expand-icon').classList.toggle('rotate-90');
+                });
+            } else {
+                // Add click handler for leaf nodes to navigate
+                treeItem.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    // Reset all active items
+                    document.querySelectorAll('.tree-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    
+                    // Set this item as active
+                    this.classList.add('active');
+                    
+                    // Handle navigation based on level
+                    const itemLevel = parseInt(this.dataset.level);
+                    const itemId = this.dataset.id;
+                    
+                    if (itemLevel === 0) {
+                        // Region level
+                        const regionName = this.querySelector('span').textContent;
+                        navigateTo(regionName, 1);
+                    } else if (itemLevel === 1) {
+                        // Plant level
+                        navigateTo(itemId, 2);
+                    } else if (itemLevel === 2) {
+                        // Production line level
+                        const parts = itemId.split('-');
+                        const plantCode = parts[0];
+                        const lineId = parts[1];
+                        
+                        // First navigate to the plant
+                        navigateTo(plantCode, 2);
+                        
+                        // Then navigate to the production line
+                        setTimeout(() => {
+                            navigateTo(lineId, 3);
+                        }, 100);
+                    }
+                });
+            }
+            
+            return treeItem;
+        }
+        
+        // Function to filter the tree
+        function filterTree(query) {
+            if (!query) {
+                // Show all items if query is empty
+                document.querySelectorAll('.tree-item').forEach(item => {
+                    item.style.display = '';
+                });
+                return;
+            }
+            
+            // First hide all items
+            document.querySelectorAll('.tree-item').forEach(item => {
+                item.style.display = 'none';
+            });
+            
+            // Find matching items
+            const matchingItems = Array.from(document.querySelectorAll('.tree-item')).filter(item => {
+                const text = item.textContent.toLowerCase();
+                return text.includes(query);
+            });
+            
+            // Show matching items and their ancestors
+            matchingItems.forEach(item => {
+                showItemAndAncestors(item);
+            });
+        }
+        
+        // Helper function to show an item and all its ancestors
+        function showItemAndAncestors(item) {
+            item.style.display = '';
+            
+            // Expand parent container if it's a child
+            const parentContainer = item.parentElement;
+            if (parentContainer.classList.contains('tree-children')) {
+                parentContainer.classList.add('expanded');
+                
+                // Rotate the expand icon
+                const expandIcon = parentContainer.previousElementSibling.querySelector('.expand-icon');
+                if (expandIcon) {
+                    expandIcon.classList.add('rotate-90');
+                }
+                
+                // Recursively show ancestors
+                const parentItem = parentContainer.parentElement;
+                if (parentItem.classList.contains('tree-item')) {
+                    showItemAndAncestors(parentItem);
+                }
+            }
+        }
+        
+        // Function to navigate to a specific level
+        function navigateTo(itemName, level) {
+            // Update navigation state
+            currentLevel = level;
+            
+            // Clear any navigation path beyond current level
+            navigationPath = navigationPath.filter(item => item.level <= level - 1);
+            
+            // Add new path item
+            navigationPath.push({
+                name: itemName,
+                level: level
+            });
+            
+            // Update breadcrumb
+            updateBreadcrumb();
+            
+            // Show corresponding view
+            showView(level);
+            
+            // Load data for the selected item
+            loadData(itemName, level);
+        }
+        
+        // Function to update the breadcrumb
+        function updateBreadcrumb() {
+            const breadcrumb = document.getElementById('breadcrumb');
+            breadcrumb.innerHTML = '';
+            
+            navigationPath.forEach((item, index) => {
+                const link = document.createElement('a');
+                link.href = '#';
+                link.textContent = item.name;
+                link.classList.add(index === navigationPath.length - 1 ? 'text-white' : 'text-carrier-blue');
+                link.classList.add('hover:underline');
+                link.dataset.level = item.level;
+                
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const clickedLevel = parseInt(e.target.dataset.level);
+                    
+                    if (clickedLevel === 0) {
+                        // Reset to home view
+                        currentLevel = 0;
+                        navigationPath = [{ name: 'Home', level: 0 }];
+                        updateBreadcrumb();
+                        showView(0);
+                    } else {
+                        // Navigate to selected level
+                        navigateTo(item.name, clickedLevel);
+                    }
+                });
+                
+                breadcrumb.appendChild(link);
+                
+                if (index < navigationPath.length - 1) {
+                    const separator = document.createElement('span');
+                    separator.textContent = ' / ';
+                    separator.classList.add('mx-2', 'text-gray-500');
+                    breadcrumb.appendChild(separator);
+                }
+            });
+        }
+        
+        // Function to show the correct view based on level
+        function showView(level) {
+            // Hide all views
+            document.querySelectorAll('.view-transition').forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            // Show the correct view
+            switch(level) {
+                case 0:
+                    document.getElementById('home-view').classList.add('active');
+                    break;
+                case 1:
+                    document.getElementById('region-view').classList.add('active');
+                    break;
+                case 2:
+                    document.getElementById('plant-view').classList.add('active');
+                    break;
+                case 3:
+                    document.getElementById('production-line-view').classList.add('active');
+                    break;
+            }
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+        
+        // Function to load data for the selected item
+        function loadData(itemName, level) {
+            switch(level) {
+                case 1: // Plants for a Region
+                    document.getElementById('region-heading').textContent = `Manufacturing Plants in ${itemName}`;
+                    populatePlants(itemName);
+                    break;
+                case 2: // Production Lines for a Plant
+                    let region = '';
+                    for (const r in plants) {
+                        if (plants[r].some(p => p.code === itemName)) {
+                            region = r;
+                            break;
+                        }
+                    }
+                    const plant = plants[region].find(p => p.code === itemName);
+                    document.getElementById('plant-heading').textContent = `${plant.name}`;
+                    document.getElementById('plant-code').textContent = plant.code;
+                    populateProductionLines(itemName);
+                    break;
+                case 3: // Assets for a Production Line
+                    // Find the right production line data
+                    let plantCode = navigationPath[navigationPath.length - 2].name;
+                    const line = productionLines[plantCode]?.find(l => l.id === itemName);
+                    if (line) {
+                        document.getElementById('production-line-title').textContent = `${line.name} - ${plantCode}`;
+                        document.getElementById('line-id-header').textContent = line.id;
+                        document.getElementById('line-efficiency').textContent = `${line.efficiency.toFixed(1)}%`;
+                        document.getElementById('line-efficiency-bar').style.width = `${line.efficiency}%`;
+                        
+                        const now = new Date();
+                        document.getElementById('line-date').textContent = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}`;
+                        document.getElementById('line-time').textContent = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                        
+                        // Set appropriate status color
+                        const efficiencyElement = document.getElementById('line-efficiency');
+                        const iconBg = document.getElementById('line-icon-bg');
+                        const efficiencyBar = document.getElementById('line-efficiency-bar');
+                        
+                        if (line.efficiency >= 90) {
+                            efficiencyElement.className = 'text-green-500 text-5xl font-bold mb-3';
+                            iconBg.className = 'bg-green-500 rounded-full w-12 h-12 flex items-center justify-center';
+                            efficiencyBar.className = 'bg-green-500 h-2.5 rounded-full';
+                        } else if (line.efficiency >= 80) {
+                            efficiencyElement.className = 'text-yellow-500 text-5xl font-bold mb-3';
+                            iconBg.className = 'bg-yellow-500 rounded-full w-12 h-12 flex items-center justify-center';
+                            efficiencyBar.className = 'bg-yellow-500 h-2.5 rounded-full';
+                        } else {
+                            efficiencyElement.className = 'text-red-500 text-5xl font-bold mb-3';
+                            iconBg.className = 'bg-red-500 rounded-full w-12 h-12 flex items-center justify-center';
+                            efficiencyBar.className = 'bg-red-500 h-2.5 rounded-full';
+                        }
+                    }
+                    break;
+            }
+        }
+        
+        // Function to populate plants for a region
+        function populatePlants(region) {
+            const container = document.getElementById('plants-grid');
+            container.innerHTML = '';
+            
+            const regionPlants = plants[region] || [];
+            
+            regionPlants.forEach(plant => {
+                const plantCard = document.createElement('div');
+                plantCard.className = 'bg-carrier-panel border border-carrier-border rounded-md p-4 nav-item cursor-pointer';
+                plantCard.onclick = () => navigateTo(plant.code, 2);
+                
+                // Calculate production line status counts
+                const plantLines = productionLines[plant.code] || [];
+                let operationalCount = 0;
+                let warningCount = 0;
+                let criticalCount = 0;
+                
+                plantLines.forEach(line => {
+                    if (line.status === 'Operational') {
+                        operationalCount++;
+                    } else if (line.status === 'Warning') {
+                        warningCount++;
+                    } else if (line.status === 'Critical') {
+                        criticalCount++;
+                    }
+                });
+                
+                plantCard.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg font-bold">${plant.code}</h3>
+                        <i class="fas fa-arrow-right text-carrier-blue"></i>
+                    </div>
+                    <div class="text-sm mb-3">${plant.name}</div>
+                    <div class="text-xs text-gray-400 mb-3">${plant.location}</div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-xs text-gray-400">Production Lines</div>
+                            <div class="text-lg">${plant.lines}</div>
+                        </div>
+                        <div>
+                            <i class="fas fa-industry text-4xl text-carrier-blue opacity-20"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center mt-2 text-xs">
+                        <div class="text-gray-400 mr-2">Status:</div>
+                        ${operationalCount > 0 ? `<div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>${operationalCount}</div>` : ''}
+                        ${warningCount > 0 ? `<div class="flex items-center mr-2"><span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>${warningCount}</div>` : ''}
+                        ${criticalCount > 0 ? `<div class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span>${criticalCount}</div>` : ''}
+                    </div>
+                `;
+                
+                container.appendChild(plantCard);
+            });
+        }
+        
+        // Function to populate production lines for a plant
+        function populateProductionLines(plantCode) {
+            const container = document.getElementById('production-lines-grid');
+            container.innerHTML = '';
+            
+            const plantProductionLines = productionLines[plantCode] || [];
+            
+            plantProductionLines.forEach(line => {
+                const lineCard = document.createElement('div');
+                lineCard.className = 'bg-carrier-panel border border-carrier-border rounded-md overflow-hidden nav-item cursor-pointer';
+                lineCard.onclick = () => navigateTo(line.id, 3);
+                
+                // Determine status color
+                let statusColor = 'green';
+                let textColor = 'text-green-500';
+                if (line.status === 'Warning') {
+                    statusColor = 'yellow';
+                    textColor = 'text-yellow-500';
+                } else if (line.status === 'Critical') {
+                    statusColor = 'red';
+                    textColor = 'text-red-500';
+                }
+                
+                // Format date/time
+                const now = new Date();
+                const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                const dateString = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}`;
+                
+                lineCard.innerHTML = `
+                    <div class="p-3 border-b border-carrier-border font-semibold flex justify-between">
+                        <span>${line.name}</span>
+                        <i class="fas fa-arrow-right text-carrier-blue"></i>
+                    </div>
+                    <div class="p-3 relative">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-xl font-semibold">${line.id}</div>
+                                <div class="text-gray-400 mt-1">Efficiency</div>
+                                <div class="${textColor} text-3xl font-bold mt-1">${line.efficiency.toFixed(1)}%</div>
+                                <div class="text-gray-400 text-xs mt-3">LAST READING</div>
+                                <div class="text-gray-200 text-xs">${dateString}</div>
+                                <div class="text-gray-200 text-xs">${timeString}</div>
+                            </div>
+                            <div class="bg-${statusColor}-500 rounded-full w-10 h-10 flex items-center justify-center">
+                                <i class="fas fa-cog text-white text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(lineCard);
+            });
+        }
+        
+        // Function to show asset list for a category
+        function showAssetList(category) {
+            document.getElementById('asset-list').classList.remove('hidden');
+            document.getElementById('asset-category').textContent = category;
+            
+            const tableBody = document.getElementById('asset-table-body');
+            tableBody.innerHTML = '';
+            
+            const categoryAssets = assets[category] || [];
+            
+            categoryAssets.forEach(asset => {
+                const row = document.createElement('tr');
+                
+                // Determine status badge
+                let statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Operational</span>`;
+                if (asset.status === 'Warning') {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Warning</span>`;
+                } else if (asset.status === 'Maintenance') {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Maintenance</span>`;
+                } else if (asset.status === 'Critical') {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Critical</span>`;
+                } else if (asset.status === 'Standby') {
+                    statusBadge = `<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Standby</span>`;
+                }
+                
+                // Determine performance indicator color
+                let performanceColor = 'bg-green-500';
+                if (asset.performance < 80) {
+                    performanceColor = 'bg-yellow-500';
+                } else if (asset.performance < 70) {
+                    performanceColor = 'bg-red-500';
+                }
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${asset.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${asset.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${asset.lastCheck}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <div class="flex items-center">
+                            <div class="w-full bg-carrier-darker rounded-full h-2 mr-2">
+                                <div class="${performanceColor} h-2 rounded-full" style="width: ${asset.performance}%"></div>
+                            </div>
+                            <span>${asset.performance}%</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <button class="hover:text-white mr-3"><i class="fas fa-chart-line"></i></button>
+                        <button class="hover:text-white mr-3"><i class="fas fa-history"></i></button>
+                        <button class="hover:text-white"><i class="fas fa-cog"></i></button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Function to hide asset list
+        function hideAssetList() {
+            document.getElementById('asset-list').classList.add('hidden');
+        }
+        
+        // Asset map filtering function
+        function filterMapAssets(assetType) {
+            // Reset all filter buttons
+            document.querySelectorAll('[id^="filter-"]').forEach(button => {
+                button.classList.remove('bg-carrier-blue');
+                button.classList.add('bg-carrier-panel');
+                button.classList.remove('text-white');
+                button.classList.add('text-gray-300');
+            });
+            
+            // Map asset types to button IDs
+            const buttonIdMap = {
+                'all': 'filter-all',
+                'Label Printers': 'filter-label-printers',
+                'Assembly Robots': 'filter-assembly',
+                'Conveyor Systems': 'filter-conveyor',
+                'Quality Control': 'filter-quality',
+                'PLCs': 'filter-plcs',
+                'HVAC Systems': 'filter-hvac'
+            };
+            
+            // Get the correct button ID
+            const buttonId = buttonIdMap[assetType];
+            
+            // Highlight the active filter button - if it exists
+            const activeButton = document.getElementById(buttonId);
+            if (activeButton) {
+                activeButton.classList.remove('bg-carrier-panel');
+                activeButton.classList.add('bg-carrier-blue');
+                activeButton.classList.remove('text-gray-300');
+                activeButton.classList.add('text-white');
+            }
+            
+            // Show/hide dots based on filter
+            document.querySelectorAll('.asset-dot').forEach(dot => {
+                if (assetType === 'all') {
+                    dot.style.display = 'block';
+                } else if (dot.dataset.assetType === assetType) {
+                    dot.style.display = 'block';
+                } else {
+                    dot.style.display = 'none';
+                }
+            });
+        }
+        
+        // Predictive Analytics and Alerts System for Label Printers
+        const realTimeAlerts = [
+            {
+                id: 'AL001',
+                type: 'critical',
+                category: 'Label Printers',
+                assetId: 'LBL-PRT-004',
+                assetName: 'Zebra ZT411 Industrial',
+                plant: 'PLT001',
+                title: 'Thermal Head Failure Detected',
+                description: 'Label printer LBL-PRT-004 has failed. Thermal head temperature sensor shows abnormal readings.',
+                timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
+                severity: 'Critical',
+                status: 'Active',
+                servicenowTicket: 'INC0010234',
+                predictive: false,
+                autoCreated: true
+            },
+            {
+                id: 'AL002',
+                type: 'predictive',
+                category: 'Label Printers',
+                assetId: 'LBL-PRT-002',
+                assetName: 'Zebra ZT230 Direct Thermal',
+                plant: 'PLT001',
+                title: 'Predicted Failure in 72 Hours',
+                description: 'AI model predicts 89% probability of print head failure within 72 hours based on temperature patterns and usage metrics.',
+                timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
+                severity: 'Warning',
+                status: 'Predicted',
+                confidence: 89,
+                timeToFailure: '72 hours',
+                predictive: true,
+                autoCreated: false
+            },
+            {
+                id: 'AL003',
+                type: 'critical',
+                category: 'Label Printers',
+                assetId: 'LBL-PRT-007',
+                assetName: 'Honeywell PM45 Industrial',
+                plant: 'PLT002',
+                title: 'Print Quality Degradation',
+                description: 'Print quality has degraded below acceptable thresholds. Immediate maintenance required.',
+                timestamp: new Date(Date.now() - 25 * 60 * 1000), // 25 minutes ago
+                severity: 'Critical',
+                status: 'Active',
+                servicenowTicket: 'INC0010235',
+                predictive: false,
+                autoCreated: true
+            },
+            {
+                id: 'AL004',
+                type: 'predictive',
+                category: 'Label Printers',
+                assetId: 'LBL-PRT-006',
+                assetName: 'Zebra ZD620 Desktop',
+                plant: 'PLT001',
+                title: 'Motor Degradation Trend Detected',
+                description: 'Stepper motor shows increasing vibration patterns. Predicted failure in 2-3 weeks.',
+                timestamp: new Date(Date.now() - 45 * 60 * 1000), // 45 minutes ago
+                severity: 'Warning',
+                status: 'Predicted',
+                confidence: 76,
+                timeToFailure: '2-3 weeks',
+                predictive: true,
+                autoCreated: false
+            },
+            {
+                id: 'AL005',
+                type: 'servicenow',
+                category: 'Label Printers',
+                assetId: 'LBL-PRT-004',
+                assetName: 'Zebra ZT411 Industrial',
+                plant: 'PLT001',
+                title: 'ServiceNow Ticket Created',
+                description: 'Incident ticket INC0010234 created for thermal head failure. Technician assigned.',
+                timestamp: new Date(Date.now() - 3 * 60 * 1000), // 3 minutes ago
+                severity: 'Info',
+                status: 'In Progress',
+                servicenowTicket: 'INC0010234',
+                predictive: false,
+                autoCreated: true
+            },
+            {
+                id: 'AL006',
+                type: 'critical',
+                category: 'Assembly Robots',
+                assetId: 'ASM-ROB-003',
+                assetName: 'Fanuc LR Mate 200iD',
+                plant: 'PLT001',
+                title: 'Robot Servo Error',
+                description: 'Joint 3 servo motor error detected. Robot stopped for safety.',
+                timestamp: new Date(Date.now() - 35 * 60 * 1000), // 35 minutes ago
+                severity: 'Critical',
+                status: 'Active',
+                servicenowTicket: 'INC0010236',
+                predictive: false,
+                autoCreated: true
+            },
+            {
+                id: 'AL007',
+                type: 'servicenow',
+                category: 'Label Printers',
+                assetId: 'LBL-PRT-007',
+                assetName: 'Honeywell PM45 Industrial',
+                plant: 'PLT002',
+                title: 'ServiceNow Ticket Created',
+                description: 'Incident ticket INC0010235 created for print quality issues. Priority: High.',
+                timestamp: new Date(Date.now() - 20 * 60 * 1000), // 20 minutes ago
+                severity: 'Info',
+                status: 'In Progress',
+                servicenowTicket: 'INC0010235',
+                predictive: false,
+                autoCreated: true
+            },
+            {
+                id: 'AL008',
+                type: 'servicenow',
+                category: 'Assembly Robots',
+                assetId: 'ASM-ROB-003',
+                assetName: 'Fanuc LR Mate 200iD',
+                plant: 'PLT001',
+                title: 'ServiceNow Ticket Created',
+                description: 'Incident ticket INC0010236 created for servo error. Technician dispatched.',
+                timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
+                severity: 'Info',
+                status: 'In Progress',
+                servicenowTicket: 'INC0010236',
+                predictive: false,
+                autoCreated: true
+            }
+        ];
+
+        // Function to format time ago
+        function timeAgo(date) {
+            const now = new Date();
+            const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+            
+            if (diffInMinutes < 1) return 'Just now';
+            if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+            
+            const diffInHours = Math.floor(diffInMinutes / 60);
+            if (diffInHours < 24) return `${diffInHours}h ago`;
+            
+            const diffInDays = Math.floor(diffInHours / 24);
+            return `${diffInDays}d ago`;
+        }
+
+        // Function to populate alerts in the panel
+        function populateAlerts(filter = 'all') {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = '';
+
+            const filteredAlerts = realTimeAlerts.filter(alert => {
+                if (filter === 'all') return true;
+                return alert.type === filter;
+            });
+
+            // Sort by timestamp (newest first)
+            filteredAlerts.sort((a, b) => b.timestamp - a.timestamp);
+
+            filteredAlerts.forEach(alert => {
+                const alertItem = document.createElement('div');
+                alertItem.className = 'border-b border-carrier-border p-4 hover:bg-carrier-panel cursor-pointer transition-colors';
+                
+                // Determine icon and colors based on alert type and severity
+                let iconClass = 'fas fa-exclamation-triangle';
+                let iconColor = 'text-yellow-500';
+                let borderColor = 'border-l-yellow-500';
+                
+                if (alert.type === 'critical') {
+                    iconClass = 'fas fa-exclamation-circle';
+                    iconColor = 'text-red-500';
+                    borderColor = 'border-l-red-500';
+                } else if (alert.type === 'predictive') {
+                    iconClass = 'fas fa-brain';
+                    iconColor = 'text-orange-500';
+                    borderColor = 'border-l-orange-500';
+                } else if (alert.type === 'servicenow') {
+                    iconClass = 'fas fa-ticket-alt';
+                    iconColor = 'text-blue-500';
+                    borderColor = 'border-l-blue-500';
+                }
+
+                alertItem.innerHTML = `
+                    <div class="border-l-4 ${borderColor} pl-3">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-start space-x-3 flex-1">
+                                <i class="${iconClass} ${iconColor} text-lg mt-1"></i>
+                                <div class="flex-1">
+                                    <div class="font-semibold text-sm">${alert.title}</div>
+                                    <div class="text-xs text-gray-400 mt-1">${alert.assetName} • ${alert.plant}</div>
+                                    <div class="text-sm text-gray-300 mt-2">${alert.description}</div>
+                                    
+                                    ${alert.predictive ? `
+                                        <div class="mt-2 flex items-center space-x-4 text-xs">
+                                            <div class="flex items-center">
+                                                <span class="text-gray-400">Confidence:</span>
+                                                <span class="ml-1 text-orange-400 font-semibold">${alert.confidence}%</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <span class="text-gray-400">Time to Failure:</span>
+                                                <span class="ml-1 text-orange-400 font-semibold">${alert.timeToFailure}</span>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${alert.servicenowTicket ? `
+                                        <div class="mt-2 flex items-center space-x-2">
+                                            <span class="bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold">${alert.servicenowTicket}</span>
+                                            ${alert.autoCreated ? '<span class="bg-green-600 text-white px-2 py-1 rounded text-xs">Auto-Created</span>' : ''}
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <div class="flex items-center justify-between mt-3">
+                                        <span class="text-xs text-gray-500">${timeAgo(alert.timestamp)}</span>
+                                        <div class="flex space-x-2">
+                                            ${alert.predictive ? `
+                                                <button class="text-xs bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 rounded" onclick="schedulePreventiveMaintenance('${alert.id}')">
+                                                    Schedule Maintenance
+                                                </button>
+                                            ` : ''}
+                                            ${alert.servicenowTicket ? `
+                                                <button class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded" onclick="showServiceNowTicket('${alert.servicenowTicket}')">
+                                                    View Ticket
+                                                </button>
+                                            ` : alert.type === 'critical' && !alert.servicenowTicket ? `
+                                                <button class="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded" onclick="createServiceNowTicket('${alert.id}')">
+                                                    Create Ticket
+                                                </button>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                alertItem.addEventListener('click', (e) => {
+                    if (!e.target.closest('button')) {
+                        // Navigate to the asset if clicking on the alert but not on buttons
+                        navigateToAsset(alert.plant, alert.assetId);
+                    }
+                });
+
+                container.appendChild(alertItem);
+            });
+
+            // Update counters
+            updateAlertCounters();
+        }
+
+        // Function to update alert counters
+        function updateAlertCounters() {
+            const criticalCount = realTimeAlerts.filter(a => a.type === 'critical').length;
+            const predictiveCount = realTimeAlerts.filter(a => a.type === 'predictive').length;
+            const servicenowCount = realTimeAlerts.filter(a => a.type === 'servicenow').length;
+            const totalCount = realTimeAlerts.length;
+
+            document.getElementById('alert-count').textContent = totalCount;
+            document.getElementById('all-count').textContent = totalCount;
+            document.getElementById('critical-count').textContent = criticalCount;
+            document.getElementById('predictive-count').textContent = predictiveCount;
+            document.getElementById('servicenow-count').textContent = servicenowCount;
+        }
+
+        // Function to navigate to specific asset
+        function navigateToAsset(plantCode, assetId) {
+            // This would navigate to the specific asset in the plant
+            // For demo purposes, we'll navigate to the plant
+            navigateTo(plantCode, 2);
+            
+            // Close alerts panel
+            document.getElementById('alerts-panel').classList.add('translate-x-full');
+            document.getElementById('alerts-overlay').classList.add('hidden');
+        }
+
+        // Function to create ServiceNow ticket
+        function createServiceNowTicket(alertId) {
+            const alert = realTimeAlerts.find(a => a.id === alertId);
+            if (!alert) return;
+
+            // Generate ticket number
+            const ticketNumber = `INC00${Math.floor(Math.random() * 90000) + 10000}`;
+            
+            // Update alert with ticket info
+            alert.servicenowTicket = ticketNumber;
+            alert.autoCreated = true;
+
+            // Add new ServiceNow alert
+            const servicenowAlert = {
+                id: `AL${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+                type: 'servicenow',
+                category: alert.category,
+                assetId: alert.assetId,
+                assetName: alert.assetName,
+                plant: alert.plant,
+                title: 'ServiceNow Ticket Created',
+                description: `Incident ticket ${ticketNumber} created automatically by blauLabs AI. Technician will be assigned shortly.`,
+                timestamp: new Date(),
+                severity: 'Info',
+                status: 'In Progress',
+                servicenowTicket: ticketNumber,
+                predictive: false,
+                autoCreated: true
+            };
+
+            realTimeAlerts.unshift(servicenowAlert);
+
+            // Show ServiceNow ticket modal
+            showServiceNowTicket(ticketNumber);
+
+            // Refresh alerts display
+            populateAlerts(currentAlertFilter);
+        }
+
+        // Function to show ServiceNow ticket details
+        function showServiceNowTicket(ticketNumber) {
+            const alert = realTimeAlerts.find(a => a.servicenowTicket === ticketNumber);
+            if (!alert) return;
+
+            const modal = document.getElementById('servicenow-modal');
+            const content = document.getElementById('servicenow-ticket-content');
+
+            const priority = alert.severity === 'Critical' ? 'High' : alert.severity === 'Warning' ? 'Medium' : 'Low';
+            const assignedTo = 'John Martinez (Field Technician)';
+            const estimatedResolution = alert.severity === 'Critical' ? '4 hours' : '24 hours';
+
+            content.innerHTML = `
+                <div class="bg-carrier-panel border border-carrier-border rounded-lg p-4 mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-lg font-semibold">${ticketNumber}</h4>
+                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm">In Progress</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <div class="text-gray-400">Priority</div>
+                            <div class="font-semibold">${priority}</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400">Created</div>
+                            <div>${timeAgo(alert.timestamp)}</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400">Assigned To</div>
+                            <div>${assignedTo}</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400">Est. Resolution</div>
+                            <div>${estimatedResolution}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <h5 class="font-semibold mb-2">Asset Information</h5>
+                        <div class="bg-carrier-panel rounded p-3 text-sm">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <span class="text-gray-400">Asset ID:</span>
+                                    <span class="ml-2">${alert.assetId}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-400">Asset Name:</span>
+                                    <span class="ml-2">${alert.assetName}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-400">Plant:</span>
+                                    <span class="ml-2">${alert.plant}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-400">Category:</span>
+                                    <span class="ml-2">${alert.category}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold mb-2">Issue Description</h5>
+                        <div class="bg-carrier-panel rounded p-3 text-sm">
+                            ${alert.description}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold mb-2">AI Recommendations</h5>
+                        <div class="bg-carrier-panel rounded p-3 text-sm">
+                            <ul class="space-y-2">
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mr-2 mt-0.5"></i>
+                                    <span>Replace thermal head assembly</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mr-2 mt-0.5"></i>
+                                    <span>Calibrate temperature sensors</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check-circle text-green-500 mr-2 mt-0.5"></i>
+                                    <span>Update firmware to version 2.1.4</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold mb-2">Parts Required</h5>
+                        <div class="bg-carrier-panel rounded p-3 text-sm">
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span>Thermal Head Assembly (P/N: TH-ZT411-01)</span>
+                                    <span class="text-green-500">✓ In Stock</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Temperature Sensor (P/N: TS-ZT411-02)</span>
+                                    <span class="text-green-500">✓ In Stock</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        // Function to schedule preventive maintenance
+        function schedulePreventiveMaintenance(alertId) {
+            const alert = realTimeAlerts.find(a => a.id === alertId);
+            if (!alert) return;
+
+            // Generate work order
+            const workOrderNumber = `WO${Math.floor(Math.random() * 90000) + 10000}`;
+            
+            // Add to maintenance data
+            const newMaintenance = {
+                id: workOrderNumber,
+                assetId: alert.assetId,
+                assetName: alert.assetName,
+                plant: `${alert.plant} - Syracuse HVAC Manufacturing`,
+                type: 'Predictive',
+                priority: 'High',
+                scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+                status: 'Scheduled',
+                technician: 'John Martinez',
+                description: `Predictive maintenance based on AI alert ${alertId}. ${alert.description}`,
+                category: alert.category
+            };
+
+            maintenanceData.unshift(newMaintenance);
+
+            // Update alert status
+            alert.status = 'Maintenance Scheduled';
+
+            // Add new maintenance alert
+            const maintenanceAlert = {
+                id: `AL${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+                type: 'servicenow',
+                category: alert.category,
+                assetId: alert.assetId,
+                assetName: alert.assetName,
+                plant: alert.plant,
+                title: 'Preventive Maintenance Scheduled',
+                description: `Work order ${workOrderNumber} created for predictive maintenance. Scheduled for tomorrow 10:00 AM.`,
+                timestamp: new Date(),
+                severity: 'Info',
+                status: 'Scheduled',
+                servicenowTicket: workOrderNumber,
+                predictive: false,
+                autoCreated: true
+            };
+
+            realTimeAlerts.unshift(maintenanceAlert);
+
+            // Refresh alerts display
+            populateAlerts(currentAlertFilter);
+
+            // Show success message
+            showNotification('Preventive maintenance scheduled successfully! Check Maintenance Dashboard for details.', 'success');
+
+            // If maintenance dashboard is open, refresh it
+            if (!document.getElementById('maintenance-dashboard').classList.contains('hidden')) {
+                populateMaintenanceTable();
+            }
+        }
+
+        // Function to show notifications
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-70 p-4 rounded-md shadow-lg text-white ${
+                type === 'success' ? 'bg-green-600' : 
+                type === 'error' ? 'bg-red-600' : 
+                'bg-blue-600'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info'}-circle mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Alert filter state
+        let currentAlertFilter = 'all';
+
+        // Event listeners for alerts panel
+        document.addEventListener('DOMContentLoaded', () => {
+            buildTreeView();
+            populateAlerts();
+
+            // Toggle alerts panel
+            document.getElementById('alerts-panel-toggle').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('alerts-panel').classList.toggle('translate-x-full');
+                document.getElementById('alerts-overlay').classList.toggle('hidden');
+            });
+
+            // Close alerts panel
+            document.getElementById('close-alerts-panel').addEventListener('click', () => {
+                document.getElementById('alerts-panel').classList.add('translate-x-full');
+                document.getElementById('alerts-overlay').classList.add('hidden');
+            });
+
+            // Close alerts panel when clicking overlay
+            document.getElementById('alerts-overlay').addEventListener('click', () => {
+                document.getElementById('alerts-panel').classList.add('translate-x-full');
+                document.getElementById('alerts-overlay').classList.add('hidden');
+            });
+
+            // Alert filter buttons
+            document.querySelectorAll('.alert-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Update button states
+                    document.querySelectorAll('.alert-filter-btn').forEach(b => {
+                        b.classList.remove('bg-carrier-blue', 'text-white');
+                        b.classList.add('bg-carrier-panel', 'text-gray-300');
+                    });
+                    btn.classList.remove('bg-carrier-panel', 'text-gray-300');
+                    btn.classList.add('bg-carrier-blue', 'text-white');
+
+                    // Filter alerts
+                    currentAlertFilter = btn.dataset.type;
+                    populateAlerts(currentAlertFilter);
+                });
+            });
+
+            // ServiceNow modal event listeners
+            document.getElementById('close-servicenow-modal').addEventListener('click', () => {
+                document.getElementById('servicenow-modal').classList.add('hidden');
+            });
+
+            document.getElementById('close-servicenow-modal-btn').addEventListener('click', () => {
+                document.getElementById('servicenow-modal').classList.add('hidden');
+            });
+
+            document.getElementById('view-in-servicenow').addEventListener('click', () => {
+                showNotification('Opening ServiceNow portal...', 'info');
+                // In a real implementation, this would open the ServiceNow portal
+            });
+
+            // Simulate real-time alerts (add new alert every 2 minutes)
+            setInterval(() => {
+                if (Math.random() < 0.3) { // 30% chance every 2 minutes
+                    addRandomAlert();
+                }
+            }, 120000); // 2 minutes
+        });
+
+        // Function to add random real-time alert
+        function addRandomAlert() {
+            const alertTypes = ['predictive', 'critical'];
+            const randomType = alertTypes[Math.floor(Math.random() * alertTypes.length)];
+            
+            const printers = assets['Label Printers'];
+            const randomPrinter = printers[Math.floor(Math.random() * printers.length)];
+            
+            const newAlert = {
+                id: `AL${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+                type: randomType,
+                category: 'Label Printers',
+                assetId: randomPrinter.id,
+                assetName: randomPrinter.name,
+                plant: 'PLT001',
+                title: randomType === 'predictive' ? 'Predictive Maintenance Alert' : 'Equipment Issue Detected',
+                description: randomType === 'predictive' ? 
+                    'AI model detected anomalous patterns suggesting potential component failure.' :
+                    'Equipment performance has degraded below operational thresholds.',
+                timestamp: new Date(),
+                severity: randomType === 'predictive' ? 'Warning' : 'Critical',
+                status: randomType === 'predictive' ? 'Predicted' : 'Active',
+                predictive: randomType === 'predictive',
+                autoCreated: false
+            };
+
+            if (randomType === 'predictive') {
+                newAlert.confidence = 70 + Math.floor(Math.random() * 25); // 70-95%
+                newAlert.timeToFailure = Math.random() < 0.5 ? '48-72 hours' : '1-2 weeks';
+            }
+
+            realTimeAlerts.unshift(newAlert);
+            
+            // Update display if alerts panel is open
+            if (!document.getElementById('alerts-panel').classList.contains('translate-x-full')) {
+                populateAlerts(currentAlertFilter);
+            } else {
+                updateAlertCounters();
+            }
+
+            // Show notification
+            showNotification(`New ${randomType} alert: ${newAlert.title}`, 'info');
+        }
+
+        // Maintenance Dashboard Data and Functions
+        const maintenanceData = [
+            {
+                id: 'WO10234',
+                assetId: 'LBL-PRT-002',
+                assetName: 'Zebra ZT230 Direct Thermal',
+                plant: 'PLT001 - Syracuse HVAC Manufacturing',
+                type: 'Predictive',
+                priority: 'High',
+                scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+                status: 'Scheduled',
+                technician: 'John Martinez',
+                description: 'Replace thermal head based on predictive analytics (89% failure confidence)',
+                category: 'Label Printers'
+            },
+            {
+                id: 'WO10235',
+                assetId: 'LBL-PRT-006',
+                assetName: 'Zebra ZD620 Desktop',
+                plant: 'PLT001 - Syracuse HVAC Manufacturing',
+                type: 'Predictive',
+                priority: 'Medium',
+                scheduledDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
+                status: 'Scheduled',
+                technician: 'Sarah Chen',
+                description: 'Motor maintenance based on vibration pattern analysis',
+                category: 'Label Printers'
+            },
+            {
+                id: 'WO10236',
+                assetId: 'ASM-ROB-003',
+                assetName: 'Fanuc LR Mate 200iD',
+                plant: 'PLT001 - Syracuse HVAC Manufacturing',
+                type: 'Corrective',
+                priority: 'Critical',
+                scheduledDate: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
+                status: 'In Progress',
+                technician: 'Mike Johnson',
+                description: 'Repair servo motor error on Joint 3',
+                category: 'Assembly Robots'
+            },
+            {
+                id: 'WO10237',
+                assetId: 'HVAC-001',
+                assetName: 'Carrier AquaEdge 19DV Chiller',
+                plant: 'PLT001 - Syracuse HVAC Manufacturing',
+                type: 'Preventive',
+                priority: 'Medium',
+                scheduledDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+                status: 'Scheduled',
+                technician: 'Lisa Wong',
+                description: 'Quarterly maintenance and refrigerant level check',
+                category: 'HVAC Systems'
+            },
+            {
+                id: 'WO10238',
+                assetId: 'LBL-PRT-004',
+                assetName: 'Zebra ZT411 Industrial',
+                plant: 'PLT001 - Syracuse HVAC Manufacturing',
+                type: 'Emergency',
+                priority: 'Critical',
+                scheduledDate: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 hour ago
+                status: 'In Progress',
+                technician: 'John Martinez',
+                description: 'Emergency repair - thermal head failure detected',
+                category: 'Label Printers'
+            },
+            {
+                id: 'WO10239',
+                assetId: 'CNV-003',
+                assetName: 'Packaging Line Conveyor',
+                plant: 'PLT001 - Syracuse HVAC Manufacturing',
+                type: 'Preventive',
+                priority: 'Low',
+                scheduledDate: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+                status: 'Completed',
+                technician: 'Sarah Chen',
+                description: 'Belt tensioning and lubrication maintenance',
+                category: 'Conveyor Systems'
+            }
+        ];
+
+        // Function to format date for display
+        function formatDate(date) {
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        // Function to populate maintenance table
+        function populateMaintenanceTable(filter = 'all') {
+            const tableBody = document.getElementById('maintenance-table-body');
+            tableBody.innerHTML = '';
+
+            const filteredData = maintenanceData.filter(item => {
+                if (filter === 'all') return true;
+                if (filter === 'scheduled') return item.status === 'Scheduled';
+                if (filter === 'in-progress') return item.status === 'In Progress';
+                if (filter === 'predictive') return item.type === 'Predictive';
+                return false;
+            });
+
+            // Sort by scheduled date
+            filteredData.sort((a, b) => a.scheduledDate - b.scheduledDate);
+
+            filteredData.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-carrier-darker';
+
+                // Determine status badge
+                let statusBadge = '';
+                if (item.status === 'Scheduled') {
+                    statusBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Scheduled</span>';
+                } else if (item.status === 'In Progress') {
+                    statusBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">In Progress</span>';
+                } else if (item.status === 'Completed') {
+                    statusBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span>';
+                }
+
+                // Determine priority badge
+                let priorityBadge = '';
+                if (item.priority === 'Critical') {
+                    priorityBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Critical</span>';
+                } else if (item.priority === 'High') {
+                    priorityBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">High</span>';
+                } else if (item.priority === 'Medium') {
+                    priorityBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Medium</span>';
+                } else {
+                    priorityBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Low</span>';
+                }
+
+                // Determine type badge
+                let typeBadge = '';
+                if (item.type === 'Predictive') {
+                    typeBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">Predictive</span>';
+                } else if (item.type === 'Preventive') {
+                    typeBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Preventive</span>';
+                } else if (item.type === 'Corrective') {
+                    typeBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Corrective</span>';
+                } else if (item.type === 'Emergency') {
+                    typeBadge = '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Emergency</span>';
+                }
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">${item.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        <div class="font-medium">${item.assetId}</div>
+                        <div class="text-xs text-gray-400">${item.assetName}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-300">
+                        <div>${item.plant}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">${typeBadge}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${priorityBadge}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${formatDate(item.scheduledDate)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${item.technician}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <button class="hover:text-white mr-3" onclick="viewMaintenanceDetails('${item.id}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="hover:text-white mr-3" onclick="editMaintenance('${item.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="hover:text-white" onclick="updateMaintenanceStatus('${item.id}')">
+                            <i class="fas fa-check-circle"></i>
+                        </button>
+                    </td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+
+            // Update statistics
+            updateMaintenanceStats();
+        }
+
+        // Function to update maintenance statistics
+        function updateMaintenanceStats() {
+            const scheduledCount = maintenanceData.filter(item => item.status === 'Scheduled').length;
+            const inProgressCount = maintenanceData.filter(item => item.status === 'In Progress').length;
+            const predictiveCount = maintenanceData.filter(item => item.type === 'Predictive').length;
+            const completedTodayCount = maintenanceData.filter(item => {
+                const today = new Date();
+                const itemDate = item.scheduledDate;
+                return item.status === 'Completed' && 
+                       itemDate.toDateString() === today.toDateString();
+            }).length;
+
+            document.getElementById('scheduled-count').textContent = scheduledCount;
+            document.getElementById('inprogress-count').textContent = inProgressCount;
+            document.getElementById('predictive-alerts-count').textContent = predictiveCount;
+            document.getElementById('completed-count').textContent = completedTodayCount;
+        }
+
+        // Function to populate asset dropdown in schedule form
+        function populateAssetDropdown() {
+            const assetSelect = document.getElementById('asset-select');
+            assetSelect.innerHTML = '<option value="">Select Asset</option>';
+
+            // Add all assets from all categories
+            Object.keys(assets).forEach(category => {
+                assets[category].forEach(asset => {
+                    const option = document.createElement('option');
+                    option.value = asset.id;
+                    option.textContent = `${asset.id} - ${asset.name}`;
+                    option.dataset.category = category;
+                    assetSelect.appendChild(option);
+                });
+            });
+        }
+
+        // Function to handle maintenance dashboard toggle
+        function toggleMaintenanceDashboard() {
+            const dashboard = document.getElementById('maintenance-dashboard');
+            dashboard.classList.toggle('hidden');
+            
+            if (!dashboard.classList.contains('hidden')) {
+                populateMaintenanceTable();
+                populateAssetDropdown();
+            }
+        }
+
+        // Function to view maintenance details
+        function viewMaintenanceDetails(workOrderId) {
+            const maintenance = maintenanceData.find(m => m.id === workOrderId);
+            if (!maintenance) return;
+            
+            showNotification(`Viewing details for ${workOrderId}: ${maintenance.description}`, 'info');
+        }
+
+        // Function to edit maintenance
+        function editMaintenance(workOrderId) {
+            showNotification(`Edit functionality for ${workOrderId} would open here`, 'info');
+        }
+
+        // Function to update maintenance status
+        function updateMaintenanceStatus(workOrderId) {
+            const maintenance = maintenanceData.find(m => m.id === workOrderId);
+            if (!maintenance) return;
+            
+            if (maintenance.status === 'Scheduled') {
+                maintenance.status = 'In Progress';
+            } else if (maintenance.status === 'In Progress') {
+                maintenance.status = 'Completed';
+            }
+            
+            populateMaintenanceTable();
+            showNotification(`Status updated for ${workOrderId}`, 'success');
+        }
+
+        // Add maintenance dashboard event listeners to the existing DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Maintenance dashboard toggle
+            document.getElementById('maintenance-dashboard-toggle').addEventListener('click', (e) => {
+                e.preventDefault();
+                toggleMaintenanceDashboard();
+            });
+
+            // Close maintenance dashboard
+            document.getElementById('close-maintenance-dashboard').addEventListener('click', () => {
+                document.getElementById('maintenance-dashboard').classList.add('hidden');
+            });
+
+            // Schedule maintenance button
+            document.getElementById('schedule-maintenance-btn').addEventListener('click', () => {
+                document.getElementById('schedule-maintenance-modal').classList.remove('hidden');
+                populateAssetDropdown();
+            });
+
+            // Close schedule modal
+            document.getElementById('close-schedule-modal').addEventListener('click', () => {
+                document.getElementById('schedule-maintenance-modal').classList.add('hidden');
+            });
+
+            document.getElementById('cancel-schedule').addEventListener('click', () => {
+                document.getElementById('schedule-maintenance-modal').classList.add('hidden');
+            });
+
+            // Maintenance filter buttons
+            document.querySelectorAll('.maintenance-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Update button states
+                    document.querySelectorAll('.maintenance-filter-btn').forEach(b => {
+                        b.classList.remove('bg-carrier-blue', 'text-white');
+                        b.classList.add('bg-carrier-panel', 'text-gray-300');
+                    });
+                    btn.classList.remove('bg-carrier-panel', 'text-gray-300');
+                    btn.classList.add('bg-carrier-blue', 'text-white');
+
+                    // Filter maintenance
+                    populateMaintenanceTable(btn.dataset.status);
+                });
+            });
+
+            // Schedule maintenance form submit
+            document.getElementById('schedule-maintenance-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const assetSelect = document.getElementById('asset-select');
+                const maintenanceType = document.getElementById('maintenance-type');
+                const prioritySelect = document.getElementById('priority-select');
+                const scheduledDate = document.getElementById('scheduled-date');
+                const technician = document.getElementById('technician-select');
+                const description = document.getElementById('maintenance-description');
+
+                if (!assetSelect.value || !scheduledDate.value) {
+                    showNotification('Please fill in all required fields', 'error');
+                    return;
+                }
+
+                // Get asset details
+                const selectedAsset = Object.values(assets).flat().find(a => a.id === assetSelect.value);
+                if (!selectedAsset) return;
+
+                // Generate work order
+                const workOrderNumber = `WO${Math.floor(Math.random() * 90000) + 10000}`;
+
+                // Add to maintenance data
+                const newMaintenance = {
+                    id: workOrderNumber,
+                    assetId: selectedAsset.id,
+                    assetName: selectedAsset.name,
+                    plant: 'PLT001 - Syracuse HVAC Manufacturing',
+                    type: maintenanceType.value.charAt(0).toUpperCase() + maintenanceType.value.slice(1),
+                    priority: prioritySelect.value.charAt(0).toUpperCase() + prioritySelect.value.slice(1),
+                    scheduledDate: new Date(scheduledDate.value),
+                    status: 'Scheduled',
+                    technician: technician.options[technician.selectedIndex].text.split(' (')[0],
+                    description: description.value || 'Scheduled maintenance task',
+                    category: assetSelect.options[assetSelect.selectedIndex].dataset.category
+                };
+
+                maintenanceData.unshift(newMaintenance);
+
+                // Close modal and refresh table
+                document.getElementById('schedule-maintenance-modal').classList.add('hidden');
+                populateMaintenanceTable();
+
+                // Reset form
+                document.getElementById('schedule-maintenance-form').reset();
+
+                showNotification(`Maintenance ${workOrderNumber} scheduled successfully!`, 'success');
+            });
+        });
+    </script>
+</body>
+</html>
